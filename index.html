@@ -577,7 +577,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 // ═══════════════════════════════════════════════════════════════════════
 let API_BASE   = '';
 let SESSION_PIN = '';
-let ALL_CAGES  = [];   // all shipped cages (location==='shipped')
+let ALL_CAGES  = [];   // all shipped cages (location==='sea')
 let FILTERED   = [];   // after search/filter
 let CURRENT_VIEW = 'board';
 let ZONE_FILTER  = 'all';
@@ -644,7 +644,7 @@ async function doAuth() {
     localStorage.setItem(LS_API, apiUrl);
     localStorage.setItem(LS_PIN, pin);
 
-    document.getElementById('auth-screen').classList.add('hidden');
+    document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('api-dot').classList.add('ok');
     await loadData();
@@ -675,8 +675,8 @@ async function loadData() {
     if (!res.ok) throw new Error('API error ' + res.status);
     const state = await res.json();
 
-    // Only cages that are "at sea" / shipped
-    ALL_CAGES = (state.cages || []).filter(c => c.location === 'sea');
+    // Only cages that are shipped to site
+    ALL_CAGES = (state.cages || []).filter(c => c.location === 'shipped');
 
     updateSidebar();
     applyFilters();
