@@ -577,7 +577,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 // ═══════════════════════════════════════════════════════════════════════
 let API_BASE   = '';
 let SESSION_PIN = '';
-let ALL_CAGES  = [];   // all shipped cages (location==='sea')
+let ALL_CAGES  = [];   // all shipped cages (location==='shipped')
 let FILTERED   = [];   // after search/filter
 let CURRENT_VIEW = 'board';
 let ZONE_FILTER  = 'all';
@@ -922,7 +922,7 @@ async function moveCage(cageId, zone, notes) {
     width:              cage.width  || 0,
     length:             cage.length || 0,
     weight:             cage.weight || 0,
-    location:           'sea',            // stays 'sea' — still at client site
+    location:           'shipped',         // stays 'shipped' — still at client site
     locationDetail:     locationDetail,
     departureDate:      cage.departure_date || cage.departureDate || null,
     proposedShipDay:    cage.proposed_ship_day || cage.proposedShipDay || null,
