@@ -81,8 +81,9 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 
 /* ── Auth Screen ── */
 .auth-screen{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(232,168,48,.06),transparent);
+  position:fixed;inset:0;z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--void);
 }
 .auth-card{
   background:var(--surface-2);
@@ -405,12 +406,6 @@ body{display:flex;flex-direction:column;overflow:hidden;}
     <div class="auth-icon">🏗️</div>
     <div class="auth-title">Site Access</div>
     <div class="auth-sub">Construction Site Tracker</div>
-    <div class="auth-api-row">
-      <label class="auth-api-label">API Base URL</label>
-      <input class="auth-api-input" id="api-url-input" type="url"
-        placeholder="https://your-worker.workers.dev"
-        value="">
-    </div>
     <input class="auth-input" id="pin-input" type="password" maxlength="12"
       placeholder="• • • • • •" autocomplete="current-password">
     <button class="auth-btn" onclick="doAuth()">Enter Site →</button>
@@ -575,7 +570,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 // ═══════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════
-let API_BASE   = '';
+const API_BASE  = 'https://cage-tracker-api.exposurephotographer0.workers.dev';
 let SESSION_PIN = '';
 let ALL_CAGES  = [];   // all shipped cages (location==='shipped')
 let FILTERED   = [];   // after search/filter
@@ -584,7 +579,8 @@ let ZONE_FILTER  = 'all';
 let MODAL_CAGE   = null;
 let MODAL_ZONE   = null;
 
-// Session movement log (in-memory, this session only)
+// Session movement log — persisted to localStorage
+const LS_LOG = 'cc_move_log';
 let MOVE_LOG = [];
 
 // Zone definitions
@@ -606,14 +602,11 @@ function parseZone(cage) {
 // ═══════════════════════════════════════════════════════════════════════
 // AUTH
 // ═══════════════════════════════════════════════════════════════════════
-// Persist API base + pin in localStorage for convenience
-const LS_API = 'cc_api_base';
+// Persist PIN in localStorage for convenience
 const LS_PIN = 'cc_pin';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const savedApi = localStorage.getItem(LS_API);
   const savedPin = localStorage.getItem(LS_PIN);
-  if (savedApi) document.getElementById('api-url-input').value = savedApi;
   if (savedPin) document.getElementById('pin-input').value = savedPin;
 
   document.getElementById('pin-input').addEventListener('keydown', e => {
@@ -622,16 +615,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function doAuth() {
-  const apiUrl = document.getElementById('api-url-input').value.trim().replace(/\/$/, '');
   const pin    = document.getElementById('pin-input').value.trim();
   const errEl  = document.getElementById('auth-err');
   errEl.classList.add('hidden');
 
-  if (!apiUrl) { showAuthErr('Enter the API base URL.'); return; }
-  if (!pin)    { showAuthErr('Enter your PIN.'); return; }
+  if (!pin) { showAuthErr('Enter your PIN.'); return; }
 
   try {
-    const res = await fetch(apiUrl + '/api/auth', {
+    const res = await fetch(API_BASE + '/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin }),
@@ -639,14 +630,36 @@ async function doAuth() {
     const data = await res.json();
     if (!data.ok) { showAuthErr(data.error || 'Incorrect PIN.'); return; }
 
-    API_BASE    = apiUrl;
     SESSION_PIN = pin;
-    localStorage.setItem(LS_API, apiUrl);
     localStorage.setItem(LS_PIN, pin);
 
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('api-dot').classList.add('ok');
+
+    // Load persisted move log from API
+    try {
+      const logRes = await fetch(API_BASE + '/api/construction_log', {
+        headers: { 'Authorization': 'Bearer ' + pin }
+      });
+      if (logRes.ok) {
+        const logData = await logRes.json();
+        if (logData.entries && logData.entries.length) {
+          MOVE_LOG = logData.entries.map(e => ({ ...e, ts: new Date(e.ts) }));
+          renderLog();
+        }
+      }
+    } catch(e) {
+      // fall back to localStorage if API unavailable
+      try {
+        const saved = localStorage.getItem(LS_LOG);
+        if (saved) {
+          MOVE_LOG = JSON.parse(saved).map(e => ({ ...e, ts: new Date(e.ts) }));
+          renderLog();
+        }
+      } catch(e2) {}
+    }
+
     await loadData();
   } catch(e) {
     showAuthErr('Could not reach API. Check the URL.');
@@ -960,6 +973,14 @@ async function moveCage(cageId, zone, notes) {
       zoneKey: zone,
     };
     MOVE_LOG.unshift(entry);
+    const logSlice = MOVE_LOG.slice(0, 100);
+    try { localStorage.setItem(LS_LOG, JSON.stringify(logSlice)); } catch(e) {}
+    // Persist to API (fire-and-forget)
+    fetch(API_BASE + '/api/construction_log', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SESSION_PIN },
+      body: JSON.stringify({ entries: logSlice }),
+    }).catch(() => {});
     renderLog();
 
     toast(`${cage.name} → ${zDef.label}`, 'success');
