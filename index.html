@@ -399,8 +399,9 @@ const LS_WRITE_PIN = 'cc_write_pin';
 // ═══════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════
-let READ_PIN   = '';   // authenticated read PIN (required to view)
-let WRITE_PIN  = '';   // optional write PIN (for editing cage data)
+let READ_PIN     = '';   // authenticated read PIN (required to view)
+let WRITE_PIN    = '';   // optional write PIN (for editing cage data)
+let ACCESS_LEVEL = 'read'; // 'read' or 'write' — from auth response
 
 let ALL_CAGES        = [];
 let FACTORY_DATA     = {};    // cage_id → {tags:{}, custom_fields:{}}
@@ -409,11 +410,24 @@ let CUSTOM_FIELDS    = [];    // [{name, type, key}]
 let FDP_CAGE_ID      = null;
 let FDP_DRAFT_TAGS   = {};
 let FDP_DRAFT_CUSTOM = {};
+let FDP_DRAFT_MESHES = {}; // mesh name → 'none'|'blue'|'blue_red'
 let FDP_EDIT_MODE    = false; // whether write PIN is active for this panel
 
-const TAG_DEFS = [
-  { key:'tag_blue',      label:'Blue',        color:'#3b82f6' },
-  { key:'tag_blue_red',  label:'Blue & Red',  color:'#7c3aed' },
+// Meshes — every cage has N1A and F1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
+// Each mesh can have: no tag, blue tag, or blue+red tag
+const MESH_NAMES = ['N1A','F1A','N3A','N5A','N7A','F3A','F5A','F7A'];
+const REQUIRED_MESHES = ['N1A','F1A'];
+const OPTIONAL_MESHES = ['N3A','N5A','N7A','F3A','F5A','F7A'];
+
+// Mesh tag states stored as: meshes: { N1A: 'none'|'blue'|'blue_red', F1A: ... }
+const MESH_TAG_OPTS = [
+  { value: 'none',     label: '—',          color: '#555e73',  bg: 'transparent' },
+  { value: 'blue',     label: 'Blue',        color: '#3b82f6',  bg: 'rgba(59,130,246,0.12)' },
+  { value: 'blue_red', label: 'Blue & Red',  color: '#7c3aed',  bg: 'rgba(124,58,237,0.12)' },
+];
+
+// Legacy cage-level tags (non-blue/non-blue_red ones remain on the cage)
+const CAGE_TAG_DEFS = [
   { key:'tag_green',     label:'Green',       color:'#22c55e' },
   { key:'tag_green_red', label:'Green & Red', color:'#16a34a' },
   { key:'tag_pink',      label:'Pink',        color:'#ec4899' },
@@ -422,6 +436,17 @@ const TAG_DEFS = [
   { key:'tag_purple',    label:'Purple',      color:'#a855f7' },
   { key:'tag_orange',    label:'Orange',      color:'#f97316' },
 ];
+
+// Helper: produce location label matching goods-out app
+function locLabel(cage) {
+  const loc = cage.location || 'facility';
+  const det = cage.locationDetail || cage.location_detail || '';
+  if (loc === 'facility') return 'In Facility';
+  if (loc === 'rmd')      return 'RMD ' + det;
+  if (loc === 'frame')    return 'Frame ' + det;
+  if (loc === 'shipped' || loc === 'sea') return 'Shipped';
+  return det || loc;
+}
 
 // ═══════════════════════════════════════════════════════════════════════
 // AUTH — read PIN required to enter app
@@ -455,7 +480,8 @@ async function doAuth() {
     const data = await res.json();
     if (!data.ok) { showAuthErr(data.error || 'Incorrect PIN.'); return; }
 
-    READ_PIN = pin;
+    READ_PIN     = pin;
+    ACCESS_LEVEL = data.level || 'read'; // 'read' or 'write'
     localStorage.setItem(LS_READ_PIN, pin);
 
     document.getElementById('auth-screen').style.display = 'none';
@@ -517,6 +543,7 @@ async function refreshData() {
 function renderTable() {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
   const filtered = ALL_CAGES.filter(c => !q || (c.name||'').toLowerCase().includes(q));
+  const canSeeDetails = (ACCESS_LEVEL === 'write' || !!WRITE_PIN);
 
   document.getElementById('cage-count').textContent = ALL_CAGES.length;
   const pill = ALL_CAGES.length === 0 ? '— cages' : `${ALL_CAGES.length} cage${ALL_CAGES.length!==1?'s':''}`;
@@ -525,39 +552,59 @@ function renderTable() {
   // thead
   const thead = document.getElementById('cage-thead');
   const customCols = CUSTOM_FIELDS.map(f => `<th>${esc(f.name)}</th>`).join('');
+  const dimCols = canSeeDetails
+    ? `<th>W (m)</th><th>H (m)</th><th>L (m)</th><th>Weight (t)</th>`
+    : '';
   thead.innerHTML = `<tr>
-    <th>Cage</th><th>W (m)</th><th>H (m)</th><th>L (m)</th><th>Weight (t)</th><th>Location</th><th>Tags</th>
+    <th>Cage</th>${dimCols}<th>Location</th><th>Meshes</th><th>Tags</th>
     ${customCols}
     <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
   </tr>`;
 
   // tbody
   const tbody = document.getElementById('cage-tbody');
+  const colCount = (canSeeDetails ? 4 : 0) + 4 + CUSTOM_FIELDS.length + 1;
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="${7 + CUSTOM_FIELDS.length + 1}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cages found'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cages found'}</td></tr>`;
     return;
   }
 
   tbody.innerHTML = filtered.map(c => {
     const fd = FACTORY_DATA[c.id] || {};
-    const tags = fd.tags || {};
+    const cageTags = fd.tags || {};
+    const meshData = fd.meshes || {};
     const customFields = fd.custom_fields || {};
-    const activeTags = TAG_DEFS.filter(t => tags[t.key]);
-    const tagDots = activeTags.length
-      ? activeTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
+
+    // Cage-level tags (non-blue)
+    const activeCageTags = CAGE_TAG_DEFS.filter(t => cageTags[t.key]);
+    const cageTagDots = activeCageTags.length
+      ? activeCageTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
       : '<span style="color:var(--text-3)">—</span>';
-    const locShort = (c.location || 'facility').replace('shipped','On Site');
+
+    // Mesh summary dots
+    const allMeshes = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
+    const meshDots = allMeshes.map(m => {
+      const state = meshData[m] || (REQUIRED_MESHES.includes(m) ? 'none' : null);
+      if (!state) return '';
+      const color = state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : '#555e73';
+      return `<span title="${m}: ${state === 'none' ? 'no tag' : state === 'blue' ? 'Blue' : 'Blue & Red'}"
+        style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:18px;border-radius:3px;
+        background:${color}18;border:1px solid ${color}55;font:700 9px var(--mono);color:${color};margin-right:2px">${m}</span>`;
+    }).join('');
+
+    const dimCells = canSeeDetails
+      ? `<td>${c.width  || '—'}</td><td>${c.height || '—'}</td><td>${c.length || '—'}</td><td>${c.weight || '—'}</td>`
+      : '';
     const customCells = CUSTOM_FIELDS.map(f =>
       `<td>${esc(customFields[f.key] || '—')}</td>`
     ).join('');
+
     return `<tr onclick="openDetail('${c.id}')">
       <td><span class="cage-ref-cell">${esc(c.name)}</span></td>
-      <td>${c.width  || '—'}</td>
-      <td>${c.height || '—'}</td>
-      <td>${c.length || '—'}</td>
-      <td>${c.weight || '—'}</td>
-      <td style="color:var(--text-2)">${esc(locShort)}</td>
-      <td>${tagDots}</td>
+      ${dimCells}
+      <td style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</td>
+      <td style="white-space:nowrap">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
+      <td>${cageTagDots}</td>
       ${customCells}
       <td></td>
     </tr>`;
@@ -575,9 +622,10 @@ function openDetail(cageId) {
   const fd = FACTORY_DATA[cageId] || {};
   FDP_DRAFT_TAGS   = { ...(fd.tags || {}) };
   FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
+  FDP_DRAFT_MESHES = { ...(fd.meshes || {}) };
 
-  // Edit mode if write PIN already stored
-  FDP_EDIT_MODE = !!WRITE_PIN;
+  // Edit mode if write PIN already stored or initial auth was write level
+  FDP_EDIT_MODE = !!(WRITE_PIN || ACCESS_LEVEL === 'write');
 
   document.getElementById('fdp-name').textContent = cage.name;
   document.getElementById('fdp-id').textContent   = 'ID: ' + cageId;
@@ -591,20 +639,63 @@ function renderDetailBody(cage) {
   cage = cage || ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
 
-  // QR points to this app with ?cage= param so scanning on mobile opens the edit flow
+  const canSeeDetails = (ACCESS_LEVEL === 'write' || !!WRITE_PIN);
   const appBase = window.location.href.split('?')[0].split('#')[0];
   const qrUrl = appBase + '?cage=' + FDP_CAGE_ID;
 
-  // Props
-  const props = [
-    { label:'Width',  value: cage.width  ? cage.width  + ' m' : '—' },
-    { label:'Height', value: cage.height ? cage.height + ' m' : '—' },
-    { label:'Length', value: cage.length ? cage.length + ' m' : '—' },
-    { label:'Weight', value: cage.weight ? cage.weight + ' t' : '—' },
-  ];
+  // Props — only shown to write-level users
+  const propsHtml = canSeeDetails ? `
+    <div class="fdp-props">
+      ${[
+        { label:'Width',  value: cage.width  ? cage.width  + ' m' : '—' },
+        { label:'Height', value: cage.height ? cage.height + ' m' : '—' },
+        { label:'Length', value: cage.length ? cage.length + ' m' : '—' },
+        { label:'Weight', value: cage.weight ? cage.weight + ' t' : '—' },
+      ].map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
+    </div>` : '';
 
-  // Tags
-  const tagsHtml = TAG_DEFS.map(t => {
+  // Location
+  const locationHtml = `
+    <div class="fdp-section-label">Location</div>
+    <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;margin-bottom:14px;font:400 13px var(--mono);color:var(--text-2)">${esc(locLabel(cage))}</div>`;
+
+  // Mesh section
+  const activeMeshes = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => {
+    const v = FDP_DRAFT_MESHES[m];
+    return v && v !== 'none';
+  })];
+  // Always show required; optional only shown if they have a value or we're editing
+  const meshesToShow = FDP_EDIT_MODE
+    ? MESH_NAMES  // show all 8 when editing so optionals can be toggled
+    : [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => FDP_DRAFT_MESHES[m] && FDP_DRAFT_MESHES[m] !== 'none')];
+
+  const meshHtml = meshesToShow.map(m => {
+    const current = FDP_DRAFT_MESHES[m] || 'none';
+    const isRequired = REQUIRED_MESHES.includes(m);
+    if (!FDP_EDIT_MODE) {
+      // Read-only display
+      const opt = MESH_TAG_OPTS.find(o => o.value === current) || MESH_TAG_OPTS[0];
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface-2);margin-bottom:6px">
+        <span style="font:700 12px var(--mono);color:var(--text-1)">${m}${isRequired ? '' : ' <span style="color:var(--text-3);font-weight:400">(opt)</span>'}</span>
+        <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label}</span>
+      </div>`;
+    }
+    // Edit mode — 3 buttons
+    const btns = MESH_TAG_OPTS.map(o => {
+      const active = current === o.value;
+      return `<button onclick="setMeshTag('${m}','${o.value}')"
+        style="flex:1;padding:5px 4px;border-radius:5px;border:1px solid ${active ? o.color : 'var(--line)'};
+        background:${active ? o.bg : 'var(--surface-3)'};color:${active ? o.color : 'var(--text-3)'};
+        font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
+    }).join('');
+    return `<div style="margin-bottom:8px">
+      <div style="font:700 11px var(--mono);color:var(--text-2);margin-bottom:4px">${m}${isRequired ? '' : ' <span style="color:var(--text-3);font-weight:400">(optional)</span>'}</div>
+      <div style="display:flex;gap:5px">${btns}</div>
+    </div>`;
+  }).join('');
+
+  // Cage-level tags (non-blue)
+  const cageTagsHtml = CAGE_TAG_DEFS.map(t => {
     const on = FDP_DRAFT_TAGS[t.key] ? ' on' : '';
     const ro = FDP_EDIT_MODE ? '' : ' readonly';
     return `<div class="tag-toggle${on}${ro}" id="ftag-${t.key}" ${FDP_EDIT_MODE ? `onclick="toggleFdpTag('${t.key}')"` : ''}>
@@ -626,13 +717,13 @@ function renderDetailBody(cage) {
     </div>
   `).join('');
 
-  // Lock banner (only shown when not in edit mode)
-  const lockBanner = FDP_EDIT_MODE ? '' : `
+  // Lock banner — shown when read PIN used and not yet unlocked
+  const lockBanner = (FDP_EDIT_MODE || ACCESS_LEVEL === 'write') ? '' : `
     <div class="lock-banner">
       <div class="lock-icon">🔒</div>
       <div class="lock-text">
         <strong>View Only</strong>
-        Scan or enter write PIN to edit this cage's data.
+        Enter write PIN to edit meshes and cage data.
       </div>
       <button class="btn btn-amber btn-sm" onclick="openPinModal()">Edit →</button>
     </div>
@@ -644,11 +735,12 @@ function renderDetailBody(cage) {
       <div class="qr-box" id="fdp-qr-box"></div>
       <div class="qr-link">${esc(qrUrl)}</div>
     </div>
-    <div class="fdp-props">
-      ${props.map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
-    </div>
-    <div class="fdp-section-label">Tags</div>
-    <div class="tags-editor">${tagsHtml}</div>
+    ${propsHtml}
+    ${locationHtml}
+    <div class="fdp-section-label">Meshes</div>
+    <div style="margin-bottom:14px">${meshHtml || '<span style="color:var(--text-3);font:400 12px var(--mono)">No mesh data</span>'}</div>
+    <div class="fdp-section-label">Cage Tags</div>
+    <div class="tags-editor">${cageTagsHtml}</div>
     ${CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
   `;
 
@@ -745,6 +837,12 @@ async function confirmWritePin() {
 // ═══════════════════════════════════════════════════════════════════════
 // TAGS & CUSTOM FIELDS — EDIT
 // ═══════════════════════════════════════════════════════════════════════
+function setMeshTag(mesh, value) {
+  if (!FDP_EDIT_MODE) return;
+  FDP_DRAFT_MESHES[mesh] = value;
+  renderDetailBody();
+}
+
 function toggleFdpTag(key) {
   if (!FDP_EDIT_MODE) return;
   FDP_DRAFT_TAGS[key] = !FDP_DRAFT_TAGS[key];
@@ -753,7 +851,9 @@ function toggleFdpTag(key) {
 }
 
 async function saveFdpChanges() {
-  if (!FDP_CAGE_ID || !WRITE_PIN) return;
+  if (!FDP_CAGE_ID) return;
+  const pin = WRITE_PIN || (ACCESS_LEVEL === 'write' ? READ_PIN : null);
+  if (!pin) return;
   CUSTOM_FIELDS.forEach(f => {
     const el = document.getElementById('cf-' + f.key);
     if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
@@ -761,11 +861,11 @@ async function saveFdpChanges() {
   try {
     const res = await fetch(API_BASE + '/api/factory-data', {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
-      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM }),
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pin },
+      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM, meshes: FDP_DRAFT_MESHES }),
     });
     if (!res.ok) throw new Error('Save failed');
-    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM } };
+    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM }, meshes: { ...FDP_DRAFT_MESHES } };
     renderTable();
     toast('Cage data saved', 'success');
   } catch(e) {
@@ -887,7 +987,8 @@ function esc(s) {
         });
         const data = await res.json();
         if (data.ok) {
-          READ_PIN = savedPin;
+          READ_PIN     = savedPin;
+          ACCESS_LEVEL = data.level || 'read';
           document.getElementById('auth-screen').style.display = 'none';
           document.getElementById('app').classList.remove('hidden');
           document.getElementById('api-dot').classList.add('ok');
