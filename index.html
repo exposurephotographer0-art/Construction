@@ -463,6 +463,7 @@ async function doAuth() {
     document.getElementById('api-dot').classList.add('ok');
 
     await loadData();
+    _maybeOpenQRCage();
   } catch(e) {
     showAuthErr('Could not reach API. Check your connection.');
     document.getElementById('api-dot').classList.add('err');
@@ -525,7 +526,7 @@ function renderTable() {
   const thead = document.getElementById('cage-thead');
   const customCols = CUSTOM_FIELDS.map(f => `<th>${esc(f.name)}</th>`).join('');
   thead.innerHTML = `<tr>
-    <th>Cage</th><th>W (mm)</th><th>H (mm)</th><th>L (mm)</th><th>Weight (kg)</th><th>Location</th><th>Tags</th>
+    <th>Cage</th><th>W (m)</th><th>H (m)</th><th>L (m)</th><th>Weight (t)</th><th>Location</th><th>Tags</th>
     ${customCols}
     <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
   </tr>`;
@@ -590,14 +591,16 @@ function renderDetailBody(cage) {
   cage = cage || ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
 
-  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
+  // QR points to this app with ?cage= param so scanning on mobile opens the edit flow
+  const appBase = window.location.href.split('?')[0].split('#')[0];
+  const qrUrl = appBase + '?cage=' + FDP_CAGE_ID;
 
   // Props
   const props = [
-    { label:'Width',  value: cage.width  ? cage.width  + ' mm' : '—' },
-    { label:'Height', value: cage.height ? cage.height + ' mm' : '—' },
-    { label:'Length', value: cage.length ? cage.length + ' mm' : '—' },
-    { label:'Weight', value: cage.weight ? cage.weight + ' kg' : '—' },
+    { label:'Width',  value: cage.width  ? cage.width  + ' m' : '—' },
+    { label:'Height', value: cage.height ? cage.height + ' m' : '—' },
+    { label:'Length', value: cage.length ? cage.length + ' m' : '—' },
+    { label:'Weight', value: cage.weight ? cage.weight + ' t' : '—' },
   ];
 
   // Tags
@@ -777,15 +780,16 @@ function printQR() {
   if (!FDP_CAGE_ID) return;
   const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
-  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
+  const appBase = window.location.href.split('?')[0].split('#')[0];
+  const qrUrl = appBase + '?cage=' + FDP_CAGE_ID;
   document.getElementById('fp-name').textContent = cage.name;
   document.getElementById('fp-meta').textContent = 'ID: ' + FDP_CAGE_ID;
   document.getElementById('fp-url').textContent  = qrUrl;
   const dims = [
-    cage.width  ? 'W: '+cage.width+'mm'  : null,
-    cage.height ? 'H: '+cage.height+'mm' : null,
-    cage.length ? 'L: '+cage.length+'mm' : null,
-    cage.weight ? cage.weight+'kg'        : null,
+    cage.width  ? 'W: '+cage.width+'m'  : null,
+    cage.height ? 'H: '+cage.height+'m' : null,
+    cage.length ? 'L: '+cage.length+'m' : null,
+    cage.weight ? cage.weight+'t'        : null,
   ].filter(Boolean).join('  ·  ');
   document.getElementById('fp-dims').textContent = dims;
   const fpQr = document.getElementById('fp-qr');
@@ -854,21 +858,67 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Deep link: #cage/cageId — auto-open detail panel (useful when QR is scanned)
-(function checkDeepLink() {
-  const hash = window.location.hash;
-  if (hash && hash.startsWith('#cage/')) {
-    const id = hash.slice(6);
-    // Wait until data is loaded then open
-    const tryOpen = setInterval(() => {
-      if (ALL_CAGES.length > 0) {
-        clearInterval(tryOpen);
-        openDetail(id);
-      }
-    }, 200);
-    setTimeout(() => clearInterval(tryOpen), 10000);
+// ── QR deep-link: ?cage=<id> ─────────────────────────────────────────
+// When a QR code is scanned on mobile it opens this app with ?cage=<id>.
+// • If a read PIN is already saved → auto-login and open the cage detail.
+// • If no PIN saved → show the normal auth screen; after login the cage
+//   detail opens automatically.
+// • The detail panel always starts in view-only mode with a visible
+//   "Edit →" button so the write PIN can be entered.
+(function handleQRLaunch() {
+  const params  = new URLSearchParams(window.location.search);
+  const cageId  = params.get('cage');
+  if (!cageId) return;
+
+  // Store for use after auth
+  window._qrCageId = cageId;
+
+  // If a read PIN is already saved, skip the auth screen
+  const savedPin = localStorage.getItem(LS_READ_PIN);
+  if (savedPin) {
+    // Attempt silent auth then open detail
+    window.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('pin-input').value = savedPin;
+      try {
+        const res  = await fetch(API_BASE + '/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: savedPin }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          READ_PIN = savedPin;
+          document.getElementById('auth-screen').style.display = 'none';
+          document.getElementById('app').classList.remove('hidden');
+          document.getElementById('api-dot').classList.add('ok');
+          await loadData();
+          // Open the cage detail — if PIN is wrong it would have fallen through
+          openDetail(cageId);
+          // Auto-prompt write PIN if no write PIN saved yet
+          if (!WRITE_PIN) {
+            setTimeout(() => openPinModal(), 400);
+          }
+          return;
+        }
+      } catch(e) {}
+      // Auth failed — fall back to manual auth screen (PIN may have changed)
+    });
+  } else {
+    // No saved PIN — show auth, open cage after login
+    // doAuth() will call loadData(); we hook into that via _qrCageId
   }
 })();
+
+// Called after successful auth + loadData when a QR launch is in progress
+function _maybeOpenQRCage() {
+  if (!window._qrCageId) return;
+  const id = window._qrCageId;
+  window._qrCageId = null;
+  if (ALL_CAGES.find(c => c.id === id)) {
+    openDetail(id);
+    if (!WRITE_PIN) setTimeout(() => openPinModal(), 400);
+  }
+}
 </script>
 </body>
 </html>
