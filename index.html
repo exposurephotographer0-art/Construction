@@ -111,6 +111,18 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .auth-btn:hover{filter:brightness(1.1);}
 .auth-err{margin-top:12px;font:400 12px var(--mono);color:#f87171;}
 
+/* ── Auth Name Step ── */
+.auth-name-step{display:flex;flex-direction:column;gap:10px;margin-bottom:4px;}
+.auth-name-row{display:flex;gap:8px;}
+.auth-name-input{
+  background:var(--surface-3);border:1px solid var(--line-mid);border-radius:var(--radius);
+  padding:12px 14px;color:var(--text-1);font:400 15px var(--sans);
+  text-align:left;width:100%;transition:border-color .2s;letter-spacing:0;
+}
+.auth-name-input:focus{outline:none;border-color:var(--amber);}
+.auth-name-input::placeholder{color:var(--text-3);}
+.auth-name-label{font:700 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;text-align:left;margin-bottom:3px;}
+
 /* ── App Layout ── */
 .app{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 
@@ -464,13 +476,40 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 <!-- ── Auth Screen ── -->
 <div class="auth-screen" id="auth-screen">
   <div class="auth-card">
-    <div class="auth-icon">📦</div>
-    <div class="auth-title">Cage Tracker</div>
-    <div class="auth-sub">Enter read PIN to view</div>
-    <input class="auth-input" id="pin-input" type="password" maxlength="12"
-      placeholder="• • • • • •" autocomplete="current-password">
-    <button class="auth-btn" onclick="doAuth()">Continue →</button>
-    <div class="auth-err hidden" id="auth-err" style="margin-top:12px;font:400 12px var(--mono);color:#f87171;"></div>
+
+    <!-- Step 1: PIN -->
+    <div id="auth-step-pin">
+      <div class="auth-icon">📦</div>
+      <div class="auth-title">Cage Tracker</div>
+      <div class="auth-sub">Enter read PIN to view</div>
+      <input class="auth-input" id="pin-input" type="password" maxlength="12"
+        placeholder="• • • • • •" autocomplete="current-password">
+      <button class="auth-btn" onclick="doAuth()">Continue →</button>
+      <div class="auth-err hidden" id="auth-err"></div>
+    </div>
+
+    <!-- Step 2: Name (shown after PIN succeeds) -->
+    <div id="auth-step-name" class="hidden">
+      <div class="auth-icon">👤</div>
+      <div class="auth-title">Who are you?</div>
+      <div class="auth-sub">Required for tag edit history</div>
+      <div class="auth-name-step">
+        <div>
+          <div class="auth-name-label">First Name</div>
+          <input class="auth-name-input" id="auth-first-name" type="text" maxlength="30"
+            placeholder="First name" autocomplete="given-name">
+        </div>
+        <div>
+          <div class="auth-name-label">Last Name</div>
+          <input class="auth-name-input" id="auth-last-name" type="text" maxlength="30"
+            placeholder="Last name" autocomplete="family-name">
+        </div>
+      </div>
+      <button class="auth-btn" id="auth-name-btn" onclick="doNameStep()" disabled
+        style="opacity:.45;cursor:not-allowed;">Enter →</button>
+      <div class="auth-err hidden" id="auth-name-err"></div>
+    </div>
+
   </div>
 </div>
 
@@ -686,13 +725,29 @@ window.addEventListener('DOMContentLoaded', () => {
   const savedWrite = localStorage.getItem(LS_WRITE_PIN);
   if (savedWrite) WRITE_PIN = savedWrite;
 
-  // Restore tagger name if saved
+  // Restore tagger name if saved — if we have both a saved PIN AND a saved name,
+  // skip the name step entirely on next login
   const savedName = localStorage.getItem('cc_tagger_name');
   if (savedName) TAGGER_NAME = savedName;
 
   document.getElementById('pin-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') doAuth();
   });
+
+  // Name step — enable button only when both fields have text
+  function _checkNameReady() {
+    const f = document.getElementById('auth-first-name').value.trim();
+    const l = document.getElementById('auth-last-name').value.trim();
+    const btn = document.getElementById('auth-name-btn');
+    const ready = f.length > 0 && l.length > 0;
+    btn.disabled = !ready;
+    btn.style.opacity = ready ? '1' : '.45';
+    btn.style.cursor  = ready ? 'pointer' : 'not-allowed';
+  }
+  document.getElementById('auth-first-name').addEventListener('input', _checkNameReady);
+  document.getElementById('auth-last-name').addEventListener('input',  _checkNameReady);
+  document.getElementById('auth-first-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('auth-last-name').focus(); });
+  document.getElementById('auth-last-name').addEventListener('keydown',  e => { if (e.key === 'Enter') doNameStep(); });
 });
 
 async function doAuth() {
@@ -711,21 +766,53 @@ async function doAuth() {
     const data = await res.json();
     if (!data.ok) { showAuthErr(data.error || 'Incorrect PIN.'); return; }
 
+    // Stash PIN & access level — don't enter app yet
     READ_PIN     = pin;
-    ACCESS_LEVEL = data.level || 'read'; // 'read' or 'write'
+    ACCESS_LEVEL = data.level || 'read';
     localStorage.setItem(LS_READ_PIN, pin);
 
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('app').classList.remove('hidden');
-    document.getElementById('api-dot').classList.add('ok');
-    document.getElementById('logout-btn').classList.remove('hidden');
-
-    await loadData();
-    _maybeOpenQRCage();
+    // If we already have a saved name, skip the name step
+    const savedName = localStorage.getItem('cc_tagger_name');
+    if (savedName && savedName.trim()) {
+      TAGGER_NAME = savedName.trim();
+      await _enterApp();
+    } else {
+      // Show name step
+      document.getElementById('auth-step-pin').classList.add('hidden');
+      document.getElementById('auth-step-name').classList.remove('hidden');
+      setTimeout(() => document.getElementById('auth-first-name').focus(), 80);
+    }
   } catch(e) {
     showAuthErr('Could not reach API. Check your connection.');
     document.getElementById('api-dot').classList.add('err');
   }
+}
+
+async function doNameStep() {
+  const first = document.getElementById('auth-first-name').value.trim();
+  const last  = document.getElementById('auth-last-name').value.trim();
+  const errEl = document.getElementById('auth-name-err');
+  errEl.classList.add('hidden');
+
+  if (!first || !last) {
+    errEl.textContent = 'Both first and last name are required.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  TAGGER_NAME = first + ' ' + last;
+  localStorage.setItem('cc_tagger_name', TAGGER_NAME);
+  await _enterApp();
+}
+
+async function _enterApp() {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('api-dot').classList.add('ok');
+  document.getElementById('logout-btn').classList.remove('hidden');
+
+  await loadData();
+  _maybeOpenQRCage();
 }
 
 function showAuthErr(msg) {
@@ -735,14 +822,22 @@ function showAuthErr(msg) {
 }
 
 function doLogout() {
-  READ_PIN = ''; WRITE_PIN = ''; ACCESS_LEVEL = 'read';
+  READ_PIN = ''; WRITE_PIN = ''; ACCESS_LEVEL = 'read'; TAGGER_NAME = '';
   ALL_CAGES = []; FACTORY_DATA = {}; CUSTOM_FIELDS = [];
   localStorage.removeItem(LS_READ_PIN);
   localStorage.removeItem(LS_WRITE_PIN);
+  localStorage.removeItem('cc_tagger_name');
   document.getElementById('logout-btn').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('auth-screen').style.display = '';
+  // Reset auth steps
+  document.getElementById('auth-step-pin').classList.remove('hidden');
+  document.getElementById('auth-step-name').classList.add('hidden');
   document.getElementById('pin-input').value = '';
+  document.getElementById('auth-first-name').value = '';
+  document.getElementById('auth-last-name').value = '';
+  document.getElementById('auth-err').classList.add('hidden');
+  document.getElementById('auth-name-err').classList.add('hidden');
   document.getElementById('api-dot').classList.remove('ok','err');
   document.getElementById('cage-count-pill').textContent = '—';
   // Clear URL params without reload
@@ -1750,17 +1845,25 @@ function esc(s) {
         if (data.ok) {
           READ_PIN     = savedPin;
           ACCESS_LEVEL = data.level || 'read';
-          document.getElementById('auth-screen').style.display = 'none';
-          document.getElementById('app').classList.remove('hidden');
-          document.getElementById('api-dot').classList.add('ok');
-          document.getElementById('logout-btn').classList.remove('hidden');
-          await loadData();
-          // Open the cage detail (pass mesh if QR was a mesh QR)
-          openDetail(cageId, window._qrMeshId || null);
-          window._qrMeshId = null;
-          // Auto-prompt write PIN if no write PIN saved yet
-          if (!WRITE_PIN && ACCESS_LEVEL !== 'write') {
-            setTimeout(() => openPinModal(), 400);
+          // Check if we have a saved name — if so, enter app directly
+          const savedNameQR = localStorage.getItem('cc_tagger_name');
+          if (savedNameQR && savedNameQR.trim()) {
+            TAGGER_NAME = savedNameQR.trim();
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('app').classList.remove('hidden');
+            document.getElementById('api-dot').classList.add('ok');
+            document.getElementById('logout-btn').classList.remove('hidden');
+            await loadData();
+            openDetail(cageId, window._qrMeshId || null);
+            window._qrMeshId = null;
+            if (!WRITE_PIN && ACCESS_LEVEL !== 'write') {
+              setTimeout(() => openPinModal(), 400);
+            }
+          } else {
+            // Have PIN but no name — show name step
+            document.getElementById('auth-step-pin').classList.add('hidden');
+            document.getElementById('auth-step-name').classList.remove('hidden');
+            setTimeout(() => document.getElementById('auth-first-name').focus(), 80);
           }
           return;
         }
