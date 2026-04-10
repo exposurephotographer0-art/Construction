@@ -524,6 +524,10 @@ body{display:flex;flex-direction:column;overflow:hidden;}
     <div class="pin-modal-sub">Enter write PIN to edit cage data</div>
     <input class="pin-modal-input" id="write-pin-input" type="password" maxlength="12"
       placeholder="• • • • • •" autocomplete="current-password">
+    <div style="margin-top:10px;margin-bottom:2px;font:400 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;text-align:left">Your name (for tag audit trail)</div>
+    <input class="pin-modal-input" id="write-name-input" type="text" maxlength="40"
+      placeholder="e.g. John Smith" autocomplete="name"
+      style="letter-spacing:normal;font-size:14px;margin-top:4px">
     <div class="pin-modal-err" id="write-pin-err"></div>
     <div class="pin-modal-footer">
       <button class="btn btn-ghost btn-sm" onclick="closePinModal()">Cancel</button>
@@ -623,6 +627,7 @@ const LS_WRITE_PIN = 'cc_write_pin';
 let READ_PIN     = '';   // authenticated read PIN (required to view)
 let WRITE_PIN    = '';   // optional write PIN (for editing cage data)
 let ACCESS_LEVEL = 'read'; // 'read' or 'write' — from auth response
+let TAGGER_NAME  = '';   // person's name recorded with tag changes
 
 let ALL_CAGES        = [];
 let FACTORY_DATA     = {};    // cage_id → {tags:{}, custom_fields:{}}
@@ -680,6 +685,10 @@ window.addEventListener('DOMContentLoaded', () => {
   // Restore write PIN silently if saved
   const savedWrite = localStorage.getItem(LS_WRITE_PIN);
   if (savedWrite) WRITE_PIN = savedWrite;
+
+  // Restore tagger name if saved
+  const savedName = localStorage.getItem('cc_tagger_name');
+  if (savedName) TAGGER_NAME = savedName;
 
   document.getElementById('pin-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') doAuth();
@@ -865,6 +874,7 @@ function openDetail(cageId, scannedMesh) {
   FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
   FDP_DRAFT_MESHES        = { ...(fd.meshes || {}) };
   FDP_DRAFT_MESH_COMMENTS = { ...(fd.mesh_comments || {}) };
+  // tag_history is read directly from FACTORY_DATA — not drafted (append-only)
 
   // Edit mode if write PIN already stored or initial auth was write level
   FDP_EDIT_MODE = !!(WRITE_PIN || ACCESS_LEVEL === 'write');
@@ -1040,6 +1050,42 @@ function renderDetailBody(cage) {
     </div>
   `;
 
+  // Tag history
+  const tagHistory = (FACTORY_DATA[FDP_CAGE_ID] || {}).tag_history || [];
+  let tagHistoryHtml = '';
+  if (tagHistory.length) {
+    const rows = [...tagHistory].reverse().slice(0, 50).map(e => {
+      const ts = e.timestamp ? new Date(e.timestamp) : null;
+      const timeStr = ts
+        ? ts.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' })
+          + ' ' + ts.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' })
+        : '—';
+      let changeDesc = '';
+      if (e.kind === 'cage_tag') {
+        const dot = `<span class="ftag-dot" style="background:${CAGE_TAG_DEFS.find(t=>t.key===e.tag)?.color||'#888'}"></span>`;
+        changeDesc = `${dot}<strong>${esc(e.tag_label)}</strong> tag → <span style="color:${e.to==='on'?'#22c55e':'#f87171'}">${e.to==='on'?'Applied':'Removed'}</span>`;
+      } else if (e.kind === 'mesh_tag') {
+        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#7c3aed' : '#555e73';
+        changeDesc = `<strong>${esc(e.mesh)}</strong> mesh → <span style="color:${toColor}">${esc(e.to_label)}</span>`;
+      } else {
+        changeDesc = esc(e.tag || e.mesh || '?');
+      }
+      return `<div style="display:grid;grid-template-columns:1fr auto;gap:6px;align-items:start;
+        padding:8px 10px;border-bottom:1px solid var(--line);font:400 11px var(--mono);">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">${changeDesc}</div>
+        <div style="text-align:right;white-space:nowrap">
+          <div style="color:var(--text-2);font-weight:700">${esc(e.person||'?')}</div>
+          <div style="color:var(--text-3);font-size:9px;margin-top:2px">${esc(timeStr)}</div>
+        </div>
+      </div>`;
+    }).join('');
+    tagHistoryHtml = `
+      <div class="fdp-section-label">Tag Audit Trail <span style="font:400 10px var(--mono);color:var(--text-3);text-transform:none;letter-spacing:0">— most recent first</span></div>
+      <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px">
+        ${rows}
+      </div>`;
+  }
+
   document.getElementById('fdp-body').innerHTML = `
     ${meshBanner}
     ${lockBanner}
@@ -1055,6 +1101,7 @@ function renderDetailBody(cage) {
     <div class="fdp-section-label">Cage Tags</div>
     <div class="tags-editor">${cageTagsHtml}</div>
     ${CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
+    ${tagHistoryHtml}
   `;
 
   // Render cage QR
@@ -1105,6 +1152,9 @@ function lockEditMode() {
 function openPinModal() {
   document.getElementById('write-pin-input').value = '';
   document.getElementById('write-pin-err').textContent = '';
+  // Pre-populate name if we already know it
+  const nameEl = document.getElementById('write-name-input');
+  if (nameEl) nameEl.value = TAGGER_NAME || '';
   document.getElementById('pin-modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('write-pin-input').focus(), 80);
 }
@@ -1146,6 +1196,14 @@ async function confirmWritePin() {
     WRITE_PIN     = pin;
     FDP_EDIT_MODE = true;
     localStorage.setItem(LS_WRITE_PIN, pin);
+
+    // Save tagger name
+    const nameEl = document.getElementById('write-name-input');
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (name) {
+      TAGGER_NAME = name;
+      localStorage.setItem('cc_tagger_name', name);
+    }
 
     closePinModal();
     const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
@@ -1197,16 +1255,61 @@ async function saveFdpChanges() {
     if (el) FDP_DRAFT_MESH_COMMENTS[m] = el.value;
   });
 
+  // Build tag history entries by diffing old vs. new
+  const tag_history_entries = [];
+  const now = new Date().toISOString();
+  const person = TAGGER_NAME || 'Unknown';
+  const oldFd = FACTORY_DATA[FDP_CAGE_ID] || {};
+
+  // Diff cage-level tags
+  const oldTags = oldFd.tags || {};
+  for (const t of CAGE_TAG_DEFS) {
+    const wasOn = !!oldTags[t.key];
+    const isOn  = !!FDP_DRAFT_TAGS[t.key];
+    if (wasOn !== isOn) {
+      tag_history_entries.push({
+        kind:      'cage_tag',
+        tag:       t.key,
+        tag_label: t.label,
+        from:      wasOn ? 'on' : 'off',
+        to:        isOn  ? 'on' : 'off',
+        person,
+        timestamp: now,
+      });
+    }
+  }
+
+  // Diff mesh tags
+  const oldMeshes = oldFd.meshes || {};
+  for (const m of MESH_NAMES) {
+    const oldVal = oldMeshes[m] || 'none';
+    const newVal = FDP_DRAFT_MESHES[m] || 'none';
+    if (oldVal !== newVal) {
+      const labelFor = v => MESH_TAG_OPTS.find(o => o.value === v)?.label || v;
+      tag_history_entries.push({
+        kind:      'mesh_tag',
+        mesh:      m,
+        from:      oldVal,
+        from_label: labelFor(oldVal),
+        to:        newVal,
+        to_label:  labelFor(newVal),
+        person,
+        timestamp: now,
+      });
+    }
+  }
+
   try {
     const res = await fetch(API_BASE + '/api/factory-data', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pin },
       body: JSON.stringify({
-        cage_id:       FDP_CAGE_ID,
-        tags:          FDP_DRAFT_TAGS,
-        custom_fields: FDP_DRAFT_CUSTOM,
-        meshes:        FDP_DRAFT_MESHES,
-        mesh_comments: FDP_DRAFT_MESH_COMMENTS,
+        cage_id:              FDP_CAGE_ID,
+        tags:                 FDP_DRAFT_TAGS,
+        custom_fields:        FDP_DRAFT_CUSTOM,
+        meshes:               FDP_DRAFT_MESHES,
+        mesh_comments:        FDP_DRAFT_MESH_COMMENTS,
+        tag_history_entries,
       }),
     });
 
@@ -1231,12 +1334,14 @@ async function saveFdpChanges() {
       return;
     }
 
+    const existingHistory = (FACTORY_DATA[FDP_CAGE_ID] || {}).tag_history || [];
     FACTORY_DATA[FDP_CAGE_ID] = {
       ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
       tags:          { ...FDP_DRAFT_TAGS },
       custom_fields: { ...FDP_DRAFT_CUSTOM },
       meshes:        { ...FDP_DRAFT_MESHES },
       mesh_comments: { ...FDP_DRAFT_MESH_COMMENTS },
+      tag_history:   [...existingHistory, ...tag_history_entries].slice(-500),
     };
     renderTable();
     toast('Cage data saved ✓', 'success');
