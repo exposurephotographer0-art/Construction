@@ -1476,7 +1476,7 @@ function showToast(msg, type = 'info') {
   setTimeout(() => t.remove(), 3000);
 }
 
-
+function printSingleMeshQR(meshName) {
   if (!FDP_CAGE_ID) return;
   const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
