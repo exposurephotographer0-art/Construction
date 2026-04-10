@@ -260,13 +260,90 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .toast.info .toast-icon{color:var(--amber);}
 @keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
 
+/* ── Label Sheet Picker Modal ── */
+.lsp-modal-overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,.75);backdrop-filter:blur(6px);
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.lsp-modal-overlay.open{opacity:1;pointer-events:all;}
+.lsp-modal{
+  background:var(--surface-1);border:1px solid var(--line-mid);
+  border-radius:var(--radius-lg);width:760px;max-width:96vw;
+  max-height:90vh;display:flex;flex-direction:column;
+  box-shadow:0 32px 80px rgba(0,0,0,.6);
+}
+.lsp-modal-header{
+  padding:18px 22px 14px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.lsp-modal-title{font:700 16px var(--sans);letter-spacing:-.03em;}
+.lsp-modal-sub{font:400 11px var(--mono);color:var(--text-3);margin-top:2px;letter-spacing:.04em;}
+.lsp-modal-body{flex:1;overflow-y:auto;padding:18px 22px;}
+.lsp-modal-footer{
+  padding:14px 22px;border-top:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-shrink:0;
+}
+
+/* The 6-slot preview grid */
+.lsp-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+  margin-bottom:18px;
+}
+.lsp-slot{
+  border:2px dashed var(--line-mid);border-radius:8px;
+  min-height:88px;padding:10px 12px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;cursor:pointer;transition:all .15s;position:relative;
+  background:var(--surface-2);
+}
+.lsp-slot:hover{border-color:var(--amber);background:var(--amber-dim);}
+.lsp-slot.filled{border-style:solid;border-color:var(--amber);background:var(--amber-dim);cursor:default;}
+.lsp-slot-num{
+  position:absolute;top:6px;left:9px;
+  font:700 9px var(--mono);color:var(--text-3);letter-spacing:.06em;
+}
+.lsp-slot-remove{
+  position:absolute;top:5px;right:7px;
+  background:none;border:none;color:var(--text-3);font-size:14px;cursor:pointer;
+  line-height:1;padding:2px;transition:color .12s;
+}
+.lsp-slot-remove:hover{color:#f87171;}
+.lsp-slot-cage{font:700 14px var(--sans);color:var(--amber);letter-spacing:-.02em;text-align:center;}
+.lsp-slot-type{font:400 10px var(--mono);color:var(--text-2);letter-spacing:.06em;text-align:center;}
+.lsp-slot-empty-hint{font:400 10px var(--mono);color:var(--text-3);letter-spacing:.06em;text-align:center;}
+
+/* Search + item list */
+.lsp-search{
+  background:var(--surface-3);border:1px solid var(--line);border-radius:7px;
+  padding:8px 12px;color:var(--text-1);font:400 12px var(--mono);width:100%;
+  margin-bottom:10px;transition:border-color .15s;
+}
+.lsp-search:focus{outline:none;border-color:var(--amber);}
+.lsp-search::placeholder{color:var(--text-3);}
+.lsp-items{
+  display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;
+  max-height:260px;overflow-y:auto;
+}
+.lsp-item{
+  background:var(--surface-2);border:1px solid var(--line);border-radius:6px;
+  padding:8px 10px;cursor:pointer;transition:all .12s;
+  display:flex;flex-direction:column;gap:3px;
+}
+.lsp-item:hover{border-color:var(--amber);background:var(--amber-dim);}
+.lsp-item.in-sheet{opacity:.4;cursor:not-allowed;pointer-events:none;}
+.lsp-item-cage{font:700 13px var(--sans);color:var(--amber);letter-spacing:-.02em;}
+.lsp-item-type{font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;}
+.lsp-section-label{font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin:14px 0 8px;}
+
 /* Spinner */
 .spinner{width:16px;height:16px;border:2px solid var(--line-mid);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
 @keyframes spin{to{transform:rotate(360deg);}}
 
 /* Print */
 @media print {
-  body > *:not(#factory-print-area):not(#mesh-print-area){display:none!important;}
+  body > *:not(#factory-print-area):not(#mesh-print-area):not(#label-sheet-print-area){display:none!important;}
   body{background:#fff!important;}
   /* Single cage QR */
   #factory-print-area{display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:40px;font-family:'Space Mono',monospace;page-break-inside:avoid;}
@@ -286,6 +363,81 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   .mesh-qr-tag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;margin-top:4px;padding:2px 8px;border-radius:3px;}
   .mesh-qr-comment{font-family:'Space Mono',monospace;font-size:8px;color:#444;margin-top:6px;padding:5px 7px;
     background:#f8f8f8;border-left:2px solid #999;border-radius:2px;text-align:left;line-height:1.5;word-break:break-word;max-width:56mm;}
+
+  /* ── Label Sheet (6-up, 105mm × 99mm, 2×3 on A4) ── */
+  #label-sheet-print-area {
+    display: grid !important;
+    grid-template-columns: 105mm 105mm;
+    grid-template-rows: 99mm 99mm 99mm;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+    width: 210mm;
+    background: #fff;
+  }
+  .lsp-cell {
+    width: 105mm;
+    height: 99mm;
+    box-sizing: border-box;
+    border: 0.4mm solid #bbb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4mm 5mm;
+    page-break-inside: avoid;
+  }
+  .lsp-cell.lsp-empty { background: #fafafa; }
+  .lsp-cage-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    color: #000;
+    text-align: center;
+    margin-bottom: 1mm;
+    text-transform: uppercase;
+  }
+  .lsp-mesh-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #333;
+    text-align: center;
+    padding: 2px 8px;
+    border: 2px solid #333;
+    border-radius: 3px;
+    margin-bottom: 3mm;
+  }
+  .lsp-cage-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 3mm;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .lsp-qr-box { padding: 5px; border: 1.5px solid #000; line-height: 0; margin-bottom: 2mm; }
+  .lsp-url {
+    font-family: 'Space Mono', monospace;
+    font-size: 6px;
+    color: #777;
+    text-align: center;
+    word-break: break-all;
+    max-width: 90mm;
+    line-height: 1.4;
+  }
+  .lsp-tag-badge {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    margin-top: 2mm;
+    padding: 1px 7px;
+    border-radius: 3px;
+  }
+  @page { size: A4 portrait; margin: 0; }
 }
 </style>
 </head>
@@ -325,6 +477,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
     <div class="t-stat"><span id="cage-count">0</span> cages</div>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="openAddFieldModal()">+ Add Field</button>
+    <button class="btn btn-amber btn-sm" onclick="openLabelSheetPicker()">⎙ Print Labels</button>
     <button class="btn btn-ghost btn-sm" onclick="refreshData()">
       <span class="spinner" style="width:11px;height:11px;border-width:1.5px;" id="refresh-spin"></span> Refresh
     </button>
@@ -407,6 +560,45 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 
 <!-- Mesh Print Area (all mesh QRs for a cage) -->
 <div id="mesh-print-area" style="display:none"></div>
+
+<!-- Label Sheet Print Area (6-up layout) -->
+<div id="label-sheet-print-area" style="display:none"></div>
+
+<!-- ── Label Sheet Picker Modal ── -->
+<div class="lsp-modal-overlay" id="lsp-modal-overlay" onclick="handleLspOverlayClick(event)">
+  <div class="lsp-modal">
+    <div class="lsp-modal-header">
+      <div>
+        <div class="lsp-modal-title">⎙ Print Label Sheet</div>
+        <div class="lsp-modal-sub">SELECT UP TO 6 QR CODES · 2 ACROSS × 3 DOWN · 105 × 99 MM</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeLabelSheetPicker()">✕ Close</button>
+    </div>
+    <div class="lsp-modal-body">
+
+      <!-- 6-slot grid preview -->
+      <div class="lsp-section-label">Label Sheet Preview</div>
+      <div class="lsp-grid" id="lsp-grid">
+        <!-- Slots rendered by JS -->
+      </div>
+
+      <!-- QR picker list -->
+      <div class="lsp-section-label">Add a QR Code</div>
+      <input class="lsp-search" id="lsp-search" type="text" placeholder="Search cage name…" oninput="renderLspItems()">
+      <div class="lsp-items" id="lsp-items">
+        <!-- Items rendered by JS -->
+      </div>
+
+    </div>
+    <div class="lsp-modal-footer">
+      <div style="font:400 11px var(--mono);color:var(--text-3)" id="lsp-count-hint">0 / 6 slots filled</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="clearLspSlots()">Clear All</button>
+        <button class="btn btn-amber btn-sm" id="lsp-print-btn" onclick="executeLabelSheetPrint()" disabled>⎙ Print Sheet</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- ── Toast container ── -->
 <div class="toast-wrap" id="toast-wrap"></div>
@@ -1073,7 +1265,217 @@ function _buildMeshCard(cage, m, meshData, meshComments, appBase, idSuffix) {
   return { card, qrId, meshQrUrl };
 }
 
-function printSingleMeshQR(meshName) {
+// ═══════════════════════════════════════════════════════════════════════
+// LABEL SHEET PICKER (6-up, 105mm × 99mm)
+// ═══════════════════════════════════════════════════════════════════════
+
+let LSP_SLOTS = [null, null, null, null, null, null]; // up to 6 items
+
+// Each slot item: { cageId, cageName, type: 'cage'|'mesh', meshName?: string, url: string, tagState?: string, tagLabel?: string }
+
+function openLabelSheetPicker() {
+  document.getElementById('lsp-modal-overlay').classList.add('open');
+  renderLspGrid();
+  renderLspItems();
+}
+
+function closeLabelSheetPicker() {
+  document.getElementById('lsp-modal-overlay').classList.remove('open');
+}
+
+function handleLspOverlayClick(e) {
+  if (e.target === document.getElementById('lsp-modal-overlay')) closeLabelSheetPicker();
+}
+
+function clearLspSlots() {
+  LSP_SLOTS = [null, null, null, null, null, null];
+  renderLspGrid();
+  renderLspItems();
+}
+
+function addToLspSlot(item) {
+  const firstEmpty = LSP_SLOTS.indexOf(null);
+  if (firstEmpty === -1) { showToast('Label sheet is full (6/6)', 'info'); return; }
+  LSP_SLOTS[firstEmpty] = item;
+  renderLspGrid();
+  renderLspItems();
+}
+
+function removeFromLspSlot(idx) {
+  LSP_SLOTS[idx] = null;
+  renderLspGrid();
+  renderLspItems();
+}
+
+function renderLspGrid() {
+  const grid = document.getElementById('lsp-grid');
+  const filled = LSP_SLOTS.filter(Boolean).length;
+  document.getElementById('lsp-count-hint').textContent = `${filled} / 6 slots filled`;
+  document.getElementById('lsp-print-btn').disabled = filled === 0;
+
+  grid.innerHTML = LSP_SLOTS.map((slot, i) => {
+    const num = `<span class="lsp-slot-num">LABEL ${i + 1}</span>`;
+    if (!slot) {
+      return `<div class="lsp-slot" title="Click an item below to fill this slot">
+        ${num}
+        <span class="lsp-slot-empty-hint">Empty — add a QR below</span>
+      </div>`;
+    }
+    const typeLabel = slot.type === 'mesh' ? `Mesh · ${slot.meshName}` : 'Cage QR';
+    return `<div class="lsp-slot filled">
+      ${num}
+      <button class="lsp-slot-remove" onclick="removeFromLspSlot(${i})" title="Remove">✕</button>
+      <div class="lsp-slot-cage">${esc(slot.cageName)}</div>
+      <div class="lsp-slot-type">${typeLabel}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderLspItems() {
+  const q = (document.getElementById('lsp-search').value || '').toLowerCase();
+  const appBase = window.location.href.split('?')[0].split('#')[0];
+  const container = document.getElementById('lsp-items');
+
+  // Build full list: cage QR + each active mesh QR for every cage
+  const items = [];
+  ALL_CAGES.forEach(cage => {
+    if (q && !(cage.name || '').toLowerCase().includes(q)) return;
+    const fd = FACTORY_DATA[cage.id] || {};
+    const meshData = fd.meshes || {};
+    const meshComments = fd.mesh_comments || {};
+
+    // Cage-level QR
+    items.push({
+      cageId: cage.id,
+      cageName: cage.name,
+      type: 'cage',
+      url: appBase + '?cage=' + cage.id,
+      tagState: null,
+      tagLabel: null,
+      comment: null,
+    });
+
+    // Mesh QRs
+    const meshesToShow = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
+    meshesToShow.forEach(m => {
+      const state = meshData[m] || 'none';
+      const opt = MESH_TAG_OPTS.find(o => o.value === state) || MESH_TAG_OPTS[0];
+      items.push({
+        cageId: cage.id,
+        cageName: cage.name,
+        type: 'mesh',
+        meshName: m,
+        url: appBase + '?cage=' + cage.id + '&mesh=' + m,
+        tagState: state,
+        tagLabel: opt.label,
+        tagColor: state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : null,
+        comment: meshComments[m] || null,
+      });
+    });
+  });
+
+  // Work out which are already in sheet (by url)
+  const inSheet = new Set(LSP_SLOTS.filter(Boolean).map(s => s.url));
+
+  if (!items.length) {
+    container.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:24px;font:400 11px var(--mono);color:var(--text-3)">No cages match search</div>`;
+    return;
+  }
+
+  container.innerHTML = items.map((item, idx) => {
+    const already = inSheet.has(item.url);
+    const typeStr = item.type === 'mesh' ? `Mesh — ${item.meshName}` : 'Cage QR';
+    const tagBadge = item.type === 'mesh' && item.tagColor
+      ? `<span style="font:700 9px var(--mono);color:${item.tagColor};margin-top:1px">${item.tagLabel}</span>`
+      : '';
+    return `<div class="lsp-item${already ? ' in-sheet' : ''}"
+      onclick="addToLspSlot(${JSON.stringify(item).replace(/"/g, '&quot;')})"
+      title="${already ? 'Already on sheet' : 'Click to add to sheet'}">
+      <div class="lsp-item-cage">${esc(item.cageName)}</div>
+      <div class="lsp-item-type">${typeStr}</div>
+      ${tagBadge}
+    </div>`;
+  }).join('');
+}
+
+function executeLabelSheetPrint() {
+  const appBase = window.location.href.split('?')[0].split('#')[0];
+  const area = document.getElementById('label-sheet-print-area');
+  area.innerHTML = '';
+
+  const qrJobs = []; // {el, url}
+
+  LSP_SLOTS.forEach((slot, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'lsp-cell' + (slot ? '' : ' lsp-empty');
+
+    if (!slot) {
+      cell.innerHTML = `<div style="color:#ccc;font:400 10px monospace;text-align:center">Empty</div>`;
+      area.appendChild(cell);
+      return;
+    }
+
+    const qrId = `lsp-qr-${i}`;
+    let tagBadgeHtml = '';
+    if (slot.type === 'mesh' && slot.tagState && slot.tagState !== 'none' && slot.tagColor) {
+      tagBadgeHtml = `<div class="lsp-tag-badge" style="color:${slot.tagColor};background:${slot.tagColor}18;border:1px solid ${slot.tagColor}55">${slot.tagLabel}</div>`;
+    }
+
+    if (slot.type === 'mesh') {
+      cell.innerHTML = `
+        <div class="lsp-cage-name">${esc(slot.cageName)}</div>
+        <div class="lsp-mesh-label">${esc(slot.meshName)}</div>
+        <div class="lsp-qr-box" id="${qrId}"></div>
+        <div class="lsp-url">${esc(slot.url)}</div>
+        ${tagBadgeHtml}
+      `;
+    } else {
+      cell.innerHTML = `
+        <div class="lsp-cage-name">${esc(slot.cageName)}</div>
+        <div class="lsp-cage-label">Cage QR Code</div>
+        <div class="lsp-qr-box" id="${qrId}"></div>
+        <div class="lsp-url">${esc(slot.url)}</div>
+      `;
+    }
+
+    area.appendChild(cell);
+    qrJobs.push({ id: qrId, url: slot.url });
+  });
+
+  area.style.display = 'grid';
+
+  // Generate QR codes then print
+  setTimeout(() => {
+    qrJobs.forEach(job => {
+      const el = document.getElementById(job.id);
+      if (!el) return;
+      new QRCode(el, {
+        text: job.url,
+        width: 160, height: 160,
+        colorDark: '#000', colorLight: '#fff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+    });
+    setTimeout(() => {
+      window.print();
+      area.style.display = 'none';
+      closeLabelSheetPicker();
+    }, 500);
+  }, 100);
+}
+
+function showToast(msg, type = 'info') {
+  // Reuse existing toast if available, otherwise just console
+  const wrap = document.getElementById('toast-wrap');
+  if (!wrap) { console.log(msg); return; }
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-icon">${type === 'info' ? 'ℹ' : '✓'}</span><span>${msg}</span>`;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+
   if (!FDP_CAGE_ID) return;
   const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
