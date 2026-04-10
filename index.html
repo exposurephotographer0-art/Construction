@@ -344,17 +344,19 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 
 /* Print */
 @media print {
-  body > *:not(#factory-print-area):not(#mesh-print-area):not(#label-sheet-print-area){display:none!important;}
-  body{background:#fff!important;}
+  body > *{display:none!important;}
+  #factory-print-area,#mesh-print-area,#label-sheet-print-area{display:revert!important;}
+  body{background:#fff!important;overflow:visible!important;display:block!important;}
+  .auth-screen,.detail-overlay,.pin-modal-overlay,.field-modal-overlay,.lsp-modal-overlay,.toast-wrap{display:none!important;}
   /* Single cage QR */
-  #factory-print-area{display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:40px;font-family:'Space Mono',monospace;page-break-inside:avoid;}
+  #factory-print-area{display:flex!important;position:fixed!important;top:0!important;left:0!important;width:100%!important;flex-direction:column;align-items:center;justify-content:center;padding:40px;font-family:'Space Mono',monospace;page-break-inside:avoid;}
   .fp-name{font-family:'Syne',sans-serif;font-size:32px;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:#000;margin-bottom:6px;}
   .fp-meta{font-size:10px;color:#666;letter-spacing:1px;margin-bottom:18px;text-align:center;}
   .fp-qr{padding:14px;border:2px solid #000;line-height:0;margin-bottom:14px;}
   .fp-url{font-size:9px;color:#444;letter-spacing:1px;text-align:center;max-width:280px;word-break:break-all;}
   .fp-dims{margin-top:14px;font-size:11px;color:#333;text-align:center;letter-spacing:1px;}
   /* Mesh QR sheet */
-  #mesh-print-area{display:flex!important;flex-wrap:wrap;gap:0;padding:10mm;background:#fff;}
+  #mesh-print-area{display:flex!important;position:fixed!important;top:0!important;left:0!important;flex-wrap:wrap;gap:0;padding:10mm;background:#fff;}
   .mesh-qr-card{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
     width:64mm;padding:6mm 4mm;border:1px solid #ccc;box-sizing:border-box;page-break-inside:avoid;margin:2mm;}
   .mesh-qr-cage{font-family:'Syne',sans-serif;font-size:18px;font-weight:900;letter-spacing:3px;color:#000;text-align:center;margin-bottom:2px;}
@@ -368,6 +370,9 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   /* ── Label Sheet (6-up, 105mm × 99mm, 2×3 on A4) ── */
   #label-sheet-print-area {
     display: grid !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
     grid-template-columns: 105mm 105mm;
     grid-template-rows: 99mm 99mm 99mm;
     gap: 0;
