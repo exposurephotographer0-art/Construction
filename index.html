@@ -284,6 +284,8 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   .mesh-qr-box{padding:6px;border:1.5px solid #000;line-height:0;margin-bottom:6px;}
   .mesh-qr-url{font-family:'Space Mono',monospace;font-size:6px;color:#666;text-align:center;word-break:break-all;max-width:56mm;}
   .mesh-qr-tag{font-family:'Space Mono',monospace;font-size:9px;font-weight:700;margin-top:4px;padding:2px 8px;border-radius:3px;}
+  .mesh-qr-comment{font-family:'Space Mono',monospace;font-size:8px;color:#444;margin-top:6px;padding:5px 7px;
+    background:#f8f8f8;border-left:2px solid #999;border-radius:2px;text-align:left;line-height:1.5;word-break:break-word;max-width:56mm;}
 }
 </style>
 </head>
@@ -431,8 +433,9 @@ let CUSTOM_FIELDS    = [];    // [{name, type, key}]
 let FDP_CAGE_ID      = null;
 let FDP_DRAFT_TAGS   = {};
 let FDP_DRAFT_CUSTOM = {};
-let FDP_DRAFT_MESHES = {}; // mesh name → 'none'|'blue'|'blue_red'
-let FDP_EDIT_MODE    = false; // whether write PIN is active for this panel
+let FDP_DRAFT_MESHES        = {}; // mesh name → 'none'|'blue'|'blue_red'
+let FDP_DRAFT_MESH_COMMENTS = {}; // mesh name → string comment
+let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
 // Meshes — every cage has N1A and F1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
 // Each mesh can have: no tag, blue tag, or blue+red tag
@@ -662,7 +665,8 @@ function openDetail(cageId, scannedMesh) {
   const fd = FACTORY_DATA[cageId] || {};
   FDP_DRAFT_TAGS   = { ...(fd.tags || {}) };
   FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
-  FDP_DRAFT_MESHES = { ...(fd.meshes || {}) };
+  FDP_DRAFT_MESHES        = { ...(fd.meshes || {}) };
+  FDP_DRAFT_MESH_COMMENTS = { ...(fd.mesh_comments || {}) };
 
   // Edit mode if write PIN already stored or initial auth was write level
   FDP_EDIT_MODE = !!(WRITE_PIN || ACCESS_LEVEL === 'write');
@@ -721,32 +725,55 @@ function renderDetailBody(cage) {
 
   const meshHtml = meshesToShow.map(m => {
     const current = FDP_DRAFT_MESHES[m] || 'none';
+    const comment = FDP_DRAFT_MESH_COMMENTS[m] || '';
     const isRequired = REQUIRED_MESHES.includes(m);
     const isScanned = m === FDP_SCANNED_MESH;
     const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
+    const opt = MESH_TAG_OPTS.find(o => o.value === current) || MESH_TAG_OPTS[0];
+    const border = isScanned ? '2px solid #3b82f6' : '1px solid var(--line)';
+    const bg     = isScanned ? 'rgba(59,130,246,0.06)' : 'var(--surface-2)';
+    const nameColor = isScanned ? '#3b82f6' : 'var(--text-1)';
+
+    const scannedBadge = isScanned
+      ? '<span style="font:600 9px var(--mono);color:#3b82f6;background:rgba(59,130,246,0.15);padding:2px 6px;border-radius:3px;margin-left:6px">SCANNED</span>'
+      : '';
+    const optBadge = !isRequired
+      ? '<span style="font:400 10px var(--mono);color:var(--text-3);margin-left:4px">(opt)</span>'
+      : '';
+
+    // Print button always visible
+    const printBtn = `<button onclick="event.stopPropagation();printSingleMeshQR('${m}')"
+      title="Print QR for ${m}"
+      style="background:none;border:1px solid var(--line);border-radius:5px;padding:3px 8px;
+      color:var(--text-3);font:600 10px var(--mono);cursor:pointer;transition:all .12s;flex-shrink:0"
+      onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'"
+      onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--text-3)'">⎙</button>`;
 
     if (!FDP_EDIT_MODE) {
-      // Read-only: show tag state + individual QR
-      const opt = MESH_TAG_OPTS.find(o => o.value === current) || MESH_TAG_OPTS[0];
-      return `<div style="border:${isScanned ? '2px solid #3b82f6' : '1px solid var(--line)'};
-        border-radius:8px;background:${isScanned ? 'rgba(59,130,246,0.06)' : 'var(--surface-2)'};
-        padding:12px;margin-bottom:8px">
+      const commentHtml = comment
+        ? `<div style="margin-top:8px;padding:8px 10px;background:var(--surface-3);border-radius:5px;
+            border-left:3px solid var(--amber);font:400 11px var(--mono);color:var(--text-2);line-height:1.5">${esc(comment)}</div>`
+        : '';
+      return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div>
-            <span style="font:700 13px var(--mono);color:${isScanned ? '#3b82f6' : 'var(--text-1)'}">${m}</span>
-            ${isScanned ? '<span style="font:600 9px var(--mono);color:#3b82f6;margin-left:6px;background:rgba(59,130,246,0.15);padding:2px 6px;border-radius:3px">SCANNED</span>' : ''}
-            ${!isRequired ? '<span style="font:400 10px var(--mono);color:var(--text-3);margin-left:4px">(opt)</span>' : ''}
+          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+            <span style="font:700 13px var(--mono);color:${nameColor}">${m}</span>
+            ${scannedBadge}${optBadge}
           </div>
-          <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
+            ${printBtn}
+          </div>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:10px">
+        ${commentHtml}
+        <div style="display:flex;align-items:flex-end;gap:10px;margin-top:10px">
           <div style="background:#fff;padding:6px;border-radius:4px;line-height:0;flex-shrink:0" id="mesh-qr-inline-${m}"></div>
-          <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.4">${esc(meshQrUrl)}</div>
+          <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.5">${esc(meshQrUrl)}</div>
         </div>
       </div>`;
     }
 
-    // Edit mode — tag buttons + compact QR
+    // Edit mode — tag buttons + comment textarea + QR
     const btns = MESH_TAG_OPTS.map(o => {
       const active = current === o.value;
       return `<button onclick="setMeshTag('${m}','${o.value}')"
@@ -754,18 +781,28 @@ function renderDetailBody(cage) {
         background:${active ? o.bg : 'var(--surface-3)'};color:${active ? o.color : 'var(--text-3)'};
         font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
     }).join('');
-    return `<div style="border:${isScanned ? '2px solid #3b82f6' : '1px solid var(--line)'};
-      border-radius:8px;background:${isScanned ? 'rgba(59,130,246,0.06)' : 'var(--surface-2)'};
-      padding:12px;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <span style="font:700 13px var(--mono);color:${isScanned ? '#3b82f6' : 'var(--text-1)'}">${m}</span>
-        ${isScanned ? '<span style="font:600 9px var(--mono);color:#3b82f6;background:rgba(59,130,246,0.15);padding:2px 6px;border-radius:3px">SCANNED</span>' : ''}
-        ${!isRequired ? '<span style="font:400 10px var(--mono);color:var(--text-3)">(optional)</span>' : ''}
+    return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span style="font:700 13px var(--mono);color:${nameColor}">${m}</span>
+          ${scannedBadge}${optBadge}
+        </div>
+        ${printBtn}
       </div>
       <div style="display:flex;gap:5px;margin-bottom:8px">${btns}</div>
+      <div style="margin-bottom:8px">
+        <div style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Comment</div>
+        <textarea id="mesh-comment-${m}"
+          style="background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:7px 9px;
+          color:var(--text-1);font:400 11px var(--mono);width:100%;resize:vertical;min-height:54px;
+          transition:border-color .15s;line-height:1.5"
+          placeholder="Notes about this mesh…"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+          oninput="FDP_DRAFT_MESH_COMMENTS['${m}']=this.value">${esc(comment)}</textarea>
+      </div>
       <div style="display:flex;align-items:flex-end;gap:8px">
         <div style="background:#fff;padding:5px;border-radius:3px;line-height:0;flex-shrink:0" id="mesh-qr-inline-${m}"></div>
-        <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.4">${esc(meshQrUrl)}</div>
+        <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.5">${esc(meshQrUrl)}</div>
       </div>
     </div>`;
   }).join('');
@@ -941,18 +978,36 @@ async function saveFdpChanges() {
   if (!FDP_CAGE_ID) return;
   const pin = WRITE_PIN || (ACCESS_LEVEL === 'write' ? READ_PIN : null);
   if (!pin) return;
+  // Collect custom field values
   CUSTOM_FIELDS.forEach(f => {
     const el = document.getElementById('cf-' + f.key);
     if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
+  });
+  // Collect mesh comment values from textareas
+  MESH_NAMES.forEach(m => {
+    const el = document.getElementById('mesh-comment-' + m);
+    if (el) FDP_DRAFT_MESH_COMMENTS[m] = el.value;
   });
   try {
     const res = await fetch(API_BASE + '/api/factory-data', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pin },
-      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM, meshes: FDP_DRAFT_MESHES }),
+      body: JSON.stringify({
+        cage_id:       FDP_CAGE_ID,
+        tags:          FDP_DRAFT_TAGS,
+        custom_fields: FDP_DRAFT_CUSTOM,
+        meshes:        FDP_DRAFT_MESHES,
+        mesh_comments: FDP_DRAFT_MESH_COMMENTS,
+      }),
     });
     if (!res.ok) throw new Error('Save failed');
-    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM }, meshes: { ...FDP_DRAFT_MESHES } };
+    FACTORY_DATA[FDP_CAGE_ID] = {
+      ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
+      tags:          { ...FDP_DRAFT_TAGS },
+      custom_fields: { ...FDP_DRAFT_CUSTOM },
+      meshes:        { ...FDP_DRAFT_MESHES },
+      mesh_comments: { ...FDP_DRAFT_MESH_COMMENTS },
+    };
     renderTable();
     toast('Cage data saved', 'success');
   } catch(e) {
@@ -963,40 +1018,70 @@ async function saveFdpChanges() {
 // ═══════════════════════════════════════════════════════════════════════
 // PRINT QR
 // ═══════════════════════════════════════════════════════════════════════
+// Build a single mesh QR card element and append to area
+function _buildMeshCard(cage, m, meshData, meshComments, appBase, idSuffix) {
+  const state = meshData[m] || 'none';
+  const comment = meshComments[m] || '';
+  const opt = MESH_TAG_OPTS.find(o => o.value === state) || MESH_TAG_OPTS[0];
+  const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
+  const tagColor = state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : '#666';
+  const tagBg    = state === 'blue' ? '#dbeafe' : state === 'blue_red' ? '#ede9fe' : '#f3f4f6';
+  const qrId = 'mp-qr-' + idSuffix;
+
+  const card = document.createElement('div');
+  card.className = 'mesh-qr-card';
+  card.innerHTML = `
+    <div class="mesh-qr-cage">${esc(cage.name)}</div>
+    <div class="mesh-qr-label">${m}</div>
+    <div class="mesh-qr-box" id="${qrId}"></div>
+    <div class="mesh-qr-url">${esc(meshQrUrl)}</div>
+    ${state !== 'none' ? `<div class="mesh-qr-tag" style="color:${tagColor};background:${tagBg};border:1px solid ${tagColor}55">${opt.label}</div>` : ''}
+    ${comment ? `<div class="mesh-qr-comment">${esc(comment)}</div>` : ''}
+  `;
+  return { card, qrId, meshQrUrl };
+}
+
+function printSingleMeshQR(meshName) {
+  if (!FDP_CAGE_ID) return;
+  const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+  if (!cage) return;
+  const appBase = window.location.href.split('?')[0].split('#')[0];
+  const fd = FACTORY_DATA[FDP_CAGE_ID] || {};
+  // Use draft values so unsaved changes are reflected
+  const meshData     = { ...( fd.meshes || {}),         ...FDP_DRAFT_MESHES };
+  const meshComments = { ...(fd.mesh_comments || {}),   ...FDP_DRAFT_MESH_COMMENTS };
+
+  const area = document.getElementById('mesh-print-area');
+  area.innerHTML = '';
+  const { card, qrId, meshQrUrl } = _buildMeshCard(cage, meshName, meshData, meshComments, appBase, meshName + '_single');
+  area.appendChild(card);
+  new QRCode(document.getElementById(qrId), {
+    text: meshQrUrl, width: 150, height: 150,
+    colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M
+  });
+  area.style.display = 'flex';
+  setTimeout(() => { window.print(); area.style.display = 'none'; }, 350);
+}
+
 function printMeshQRs() {
   if (!FDP_CAGE_ID) return;
   const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
   const appBase = window.location.href.split('?')[0].split('#')[0];
   const fd = FACTORY_DATA[FDP_CAGE_ID] || {};
-  const meshData = fd.meshes || FDP_DRAFT_MESHES || {};
+  const meshData     = { ...(fd.meshes || {}),        ...FDP_DRAFT_MESHES };
+  const meshComments = { ...(fd.mesh_comments || {}), ...FDP_DRAFT_MESH_COMMENTS };
 
-  // Build the list of meshes to print: required always + optional if they have a tag value
+  // Required always; optional if they have a tag
   const meshesToPrint = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
 
   const area = document.getElementById('mesh-print-area');
   area.innerHTML = '';
 
-  // Create a card per mesh synchronously (QRCode generates inline)
   meshesToPrint.forEach(m => {
-    const state = meshData[m] || 'none';
-    const opt = MESH_TAG_OPTS.find(o => o.value === state) || MESH_TAG_OPTS[0];
-    const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
-    const tagColor = state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : '#888';
-    const tagBg    = state === 'blue' ? '#dbeafe' : state === 'blue_red' ? '#ede9fe' : '#f3f4f6';
-
-    const card = document.createElement('div');
-    card.className = 'mesh-qr-card';
-    card.innerHTML = `
-      <div class="mesh-qr-cage">${esc(cage.name)}</div>
-      <div class="mesh-qr-label">${m}</div>
-      <div class="mesh-qr-box" id="mp-qr-${m}"></div>
-      <div class="mesh-qr-url">${esc(meshQrUrl)}</div>
-      ${state !== 'none' ? `<div class="mesh-qr-tag" style="color:${tagColor};background:${tagBg};border:1px solid ${tagColor}55">${opt.label}</div>` : ''}
-    `;
+    const { card, qrId, meshQrUrl } = _buildMeshCard(cage, m, meshData, meshComments, appBase, m + '_all');
     area.appendChild(card);
-
-    new QRCode(document.getElementById('mp-qr-' + m), {
+    new QRCode(document.getElementById(qrId), {
       text: meshQrUrl, width: 120, height: 120,
       colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M
     });
