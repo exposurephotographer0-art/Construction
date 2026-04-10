@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cage Construction — Site Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 /* ── Reset & Tokens ── */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
@@ -385,6 +386,84 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   .sidebar{display:none;}
   .zone-board{grid-template-columns:1fr;}
 }
+
+/* ── FACTORY TAB STYLES ── */
+.tab-nav{display:flex;gap:2px;background:var(--surface-2);border-radius:8px;padding:3px;border:1px solid var(--line);margin:0 12px;}
+.tab-btn{padding:5px 14px;border-radius:6px;border:none;background:transparent;color:var(--text-3);font:600 11px var(--mono);cursor:pointer;transition:all .12s;white-space:nowrap;}
+.tab-btn.active{background:var(--surface-1);color:var(--text-1);}
+
+.factory-app{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.factory-toolbar{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;background:var(--surface-1);}
+.factory-search{background:var(--surface-3);border:1px solid var(--line);border-radius:7px;padding:7px 12px;color:var(--text-1);font:400 12px var(--mono);width:220px;transition:border-color .15s;}
+.factory-search:focus{outline:none;border-color:var(--amber);}
+.factory-search::placeholder{color:var(--text-3);}
+.f-stat{font:700 11px var(--mono);padding:4px 10px;border-radius:5px;background:var(--surface-3);color:var(--text-2);border:1px solid var(--line);}
+.f-stat span{color:var(--amber);}
+
+.factory-table-wrap{flex:1;overflow:auto;}
+.factory-table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px;}
+.factory-table th{text-align:left;padding:9px 12px;font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--line);background:var(--surface-1);position:sticky;top:0;z-index:2;white-space:nowrap;}
+.factory-table th.add-th{color:var(--amber);cursor:pointer;text-align:center;padding:9px 8px;width:36px;}
+.factory-table th.add-th:hover{color:#fbbf24;}
+.factory-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.factory-table tr{cursor:pointer;transition:background .1s;}
+.factory-table tr:hover td{background:var(--surface-2);}
+.factory-table tr:last-child td{border-bottom:none;}
+.cage-ref-cell{font:700 14px var(--sans);color:var(--amber);}
+.ftag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;border:1px solid rgba(255,255,255,.15);}
+
+/* Factory Detail Panel */
+.factory-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:stretch;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px);}
+.factory-detail-overlay.open{opacity:1;pointer-events:all;}
+.factory-detail-panel{background:var(--surface-1);border-left:1px solid var(--line-mid);width:480px;max-width:100vw;height:100vh;display:flex;flex-direction:column;transform:translateX(40px);transition:transform .25s;box-shadow:-20px 0 60px rgba(0,0,0,.5);}
+.factory-detail-overlay.open .factory-detail-panel{transform:translateX(0);}
+.fdp-header{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
+.fdp-name{font:900 30px var(--sans);letter-spacing:-.04em;color:var(--amber);}
+.fdp-id{font:400 10px var(--mono);color:var(--text-3);margin-top:3px;letter-spacing:.05em;}
+.fdp-body{flex:1;overflow-y:auto;padding:18px 22px;}
+.fdp-footer{padding:14px 22px;border-top:1px solid var(--line);display:flex;gap:8px;flex-wrap:wrap;flex-shrink:0;}
+
+.qr-wrap{display:flex;flex-direction:column;align-items:center;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:18px;margin-bottom:16px;gap:10px;}
+.qr-box{background:#fff;padding:10px;border-radius:4px;line-height:0;}
+.qr-link{font:400 10px var(--mono);color:var(--text-3);letter-spacing:.05em;text-align:center;word-break:break-all;max-width:260px;}
+
+.fdp-section-label{font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin:14px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line);}
+.fdp-props{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.fdp-prop{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;}
+.fdp-prop-label{font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:3px;}
+.fdp-prop-value{font:700 15px var(--sans);color:var(--text-1);}
+
+.tags-editor{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:7px;margin-bottom:14px;}
+.tag-toggle{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer;transition:all .12s;background:var(--surface-2);font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);}
+.tag-toggle:hover{border-color:var(--line-mid);color:var(--text-2);}
+.tag-toggle.on{border-color:var(--amber);background:var(--amber-dim);color:var(--text-1);}
+
+.custom-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.cf-item{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;}
+.cf-label{font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;}
+.cf-input{background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:6px 9px;color:var(--text-1);font:400 13px var(--mono);width:100%;transition:border-color .15s;}
+.cf-input:focus{outline:none;border-color:var(--amber);}
+
+.btn-danger-ghost{background:transparent;border:1px solid #f87171;color:#f87171;border-radius:7px;padding:7px 14px;font:600 11px var(--sans);cursor:pointer;transition:all .12s;}
+.btn-danger-ghost:hover{background:rgba(248,113,113,.1);}
+
+/* Field modal */
+.field-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.field-modal-overlay.hidden{display:none;}
+.field-modal{background:var(--surface-2);border:1px solid var(--line-mid);border-radius:var(--radius-lg);padding:28px 30px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+
+/* Print */
+@media print {
+  body > *:not(#factory-print-area){display:none!important;}
+  body{background:#fff!important;}
+  #factory-print-area{display:flex!important;flex-direction:column;align-items:center;justify-content:center;padding:40px;font-family:'Space Mono',monospace;page-break-inside:avoid;}
+  .fp-name{font-family:'Syne',sans-serif;font-size:32px;font-weight:900;letter-spacing:4px;text-transform:uppercase;color:#000;margin-bottom:6px;}
+  .fp-meta{font-size:10px;color:#666;letter-spacing:1px;margin-bottom:18px;text-align:center;}
+  .fp-qr{padding:14px;border:2px solid #000;line-height:0;margin-bottom:14px;}
+  .fp-url{font-size:9px;color:#444;letter-spacing:1px;text-align:center;max-width:280px;word-break:break-all;}
+  .fp-dims{margin-top:14px;font-size:11px;color:#333;text-align:center;letter-spacing:1px;}
+}
+
 </style>
 </head>
 <body>
@@ -395,6 +474,10 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   <div class="header-text">
     <div class="header-title">Cage Construction</div>
     <div class="header-sub">Site Tracker</div>
+  </div>
+  <div class="tab-nav">
+    <button class="tab-btn active" id="tab-construction" onclick="switchTab('construction')">🏗 Construction</button>
+    <button class="tab-btn" id="tab-factory" onclick="switchTab('factory')">🏭 Factory</button>
   </div>
   <div class="header-pill" id="cage-count-pill">—</div>
   <div class="api-indicator" id="api-dot" title="API status"></div>
@@ -561,6 +644,76 @@ body{display:flex;flex-direction:column;overflow:hidden;}
       <button class="btn btn-amber" id="modal-confirm" onclick="confirmMove()">Confirm Move</button>
     </div>
   </div>
+</div>
+
+<!-- ── Factory App ── -->
+<div class="factory-app hidden" id="factory-app">
+  <div class="factory-toolbar">
+    <input class="factory-search" type="text" id="factory-search" placeholder="Search cage…" oninput="renderFactoryTable()">
+    <div class="f-stat"><span id="factory-count">0</span> cages</div>
+    <div style="flex:1"></div>
+    <button class="btn btn-ghost btn-sm" onclick="openAddFieldModal()">+ Add Field</button>
+    <button class="btn btn-ghost btn-sm" onclick="refreshFactoryData()">↺ Refresh</button>
+  </div>
+  <div class="factory-table-wrap">
+    <table class="factory-table">
+      <thead id="factory-thead"></thead>
+      <tbody id="factory-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Factory Detail Panel -->
+<div class="factory-detail-overlay" id="factory-detail-overlay" onclick="handleFdpOverlayClick(event)">
+  <div class="factory-detail-panel">
+    <div class="fdp-header">
+      <div>
+        <div class="fdp-name" id="fdp-name">—</div>
+        <div class="fdp-id" id="fdp-id"></div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">Save</button>
+        <button style="background:none;border:none;color:var(--text-2);font-size:18px;cursor:pointer;padding:2px 8px;" onclick="closeFactoryDetail()">✕</button>
+      </div>
+    </div>
+    <div class="fdp-body" id="fdp-body"></div>
+    <div class="fdp-footer">
+      <button class="btn btn-amber btn-sm" onclick="printFactoryQR()">⎙ Print QR</button>
+      <button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Field Modal -->
+<div class="field-modal-overlay hidden" id="field-modal-overlay" onclick="handleFieldModalOverlay(event)">
+  <div class="field-modal">
+    <div class="modal-title" style="margin-bottom:4px">Add Custom Field</div>
+    <div class="modal-sub">Appears on every cage in the Factory tab</div>
+    <div class="modal-field">
+      <label class="modal-label">Field Name *</label>
+      <input class="modal-input" type="text" id="new-field-name" placeholder="e.g. Batch Number">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Type</label>
+      <select class="modal-input" id="new-field-type">
+        <option value="text">Text</option>
+        <option value="number">Number</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeAddFieldModal()">Cancel</button>
+      <button class="btn btn-amber" onclick="confirmAddField()">Add Field</button>
+    </div>
+  </div>
+</div>
+
+<!-- Factory Print Area -->
+<div id="factory-print-area" style="display:none">
+  <div class="fp-name" id="fp-name"></div>
+  <div class="fp-meta" id="fp-meta"></div>
+  <div class="fp-qr" id="fp-qr"></div>
+  <div class="fp-url" id="fp-url"></div>
+  <div class="fp-dims" id="fp-dims"></div>
 </div>
 
 <!-- ── Toast container ── -->
@@ -1052,6 +1205,290 @@ function esc(s) {
 document.getElementById('move-modal').addEventListener('click', function(e){
   if (e.target === this) closeModal();
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// FACTORY TRACKER — state & logic
+// ═══════════════════════════════════════════════════════════════════════
+let FACTORY_DATA = {};       // cage_id → {tags:{}, custom_fields:{}}
+let FACTORY_CUSTOM_FIELDS = []; // [{name, type, key}]
+let FACTORY_ALL_CAGES = [];  // all cages from /api/state (all locations)
+let FDP_CAGE_ID = null;      // currently open detail panel cage id
+let FDP_DRAFT_TAGS = {};     // tag state being edited
+let FDP_DRAFT_CUSTOM = {};   // custom field values being edited
+
+const FACTORY_TAG_DEFS = [
+  { key:'tag_blue',      label:'Blue',        color:'#3b82f6' },
+  { key:'tag_blue_red',  label:'Blue & Red',  color:'#7c3aed' },
+  { key:'tag_green',     label:'Green',       color:'#22c55e' },
+  { key:'tag_green_red', label:'Green & Red', color:'#16a34a' },
+  { key:'tag_pink',      label:'Pink',        color:'#ec4899' },
+  { key:'tag_yellow',    label:'Yellow',      color:'#eab308' },
+  { key:'tag_white',     label:'White',       color:'#d1d5db' },
+  { key:'tag_purple',    label:'Purple',      color:'#a855f7' },
+  { key:'tag_orange',    label:'Orange',      color:'#f97316' },
+];
+
+// ── Tab switching ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  const isFactory = tab === 'factory';
+  document.getElementById('app').classList.toggle('hidden', isFactory);
+  document.getElementById('factory-app').classList.toggle('hidden', !isFactory);
+  document.getElementById('tab-construction').classList.toggle('active', !isFactory);
+  document.getElementById('tab-factory').classList.toggle('active', isFactory);
+  if (isFactory && FACTORY_ALL_CAGES.length === 0) loadFactoryData();
+}
+
+// ── Load factory data ─────────────────────────────────────────────────
+async function loadFactoryData() {
+  try {
+    const [stateRes, fdRes, fsRes] = await Promise.all([
+      fetch(API_BASE + '/api/state', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
+      fetch(API_BASE + '/api/factory-data', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
+      fetch(API_BASE + '/api/factory-settings', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
+    ]);
+    const state = stateRes.ok ? await stateRes.json() : { cages: [] };
+    const fd    = fdRes.ok   ? await fdRes.json()    : { data: {} };
+    const fs    = fsRes.ok   ? await fsRes.json()    : { customFields: [] };
+
+    FACTORY_ALL_CAGES = state.cages || [];
+    FACTORY_DATA = fd.data || {};
+    FACTORY_CUSTOM_FIELDS = fs.customFields || [];
+
+    renderFactoryTable();
+    toast('Factory data loaded', 'success');
+  } catch(e) {
+    toast('Factory load failed: ' + e.message, 'error');
+  }
+}
+
+async function refreshFactoryData() {
+  await loadFactoryData();
+}
+
+// ── Render factory table ──────────────────────────────────────────────
+function renderFactoryTable() {
+  const q = (document.getElementById('factory-search').value || '').toLowerCase();
+  const filtered = FACTORY_ALL_CAGES.filter(c =>
+    !q || (c.name||'').toLowerCase().includes(q)
+  );
+
+  document.getElementById('factory-count').textContent = FACTORY_ALL_CAGES.length;
+
+  // thead
+  const thead = document.getElementById('factory-thead');
+  const customCols = FACTORY_CUSTOM_FIELDS.map(f =>
+    `<th>${esc(f.name)}</th>`
+  ).join('');
+  thead.innerHTML = `<tr>
+    <th>Cage</th><th>W (mm)</th><th>H (mm)</th><th>L (mm)</th><th>Weight (kg)</th><th>Location</th><th>Tags</th>
+    ${customCols}
+    <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
+  </tr>`;
+
+  // tbody
+  const tbody = document.getElementById('factory-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="${7 + FACTORY_CUSTOM_FIELDS.length + 1}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cage data loaded'}</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(c => {
+    const fd = FACTORY_DATA[c.id] || {};
+    const tags = fd.tags || {};
+    const customFields = fd.custom_fields || {};
+    const activeTags = FACTORY_TAG_DEFS.filter(t => tags[t.key]);
+    const tagDots = activeTags.length
+      ? activeTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
+      : '<span style="color:var(--text-3)">—</span>';
+    const locShort = (c.location||'facility').replace('shipped','On Site');
+    const customCells = FACTORY_CUSTOM_FIELDS.map(f =>
+      `<td>${esc(customFields[f.key] || '—')}</td>`
+    ).join('');
+    return `<tr onclick="openFactoryDetail('${c.id}')">
+      <td><span class="cage-ref-cell">${esc(c.name)}</span></td>
+      <td>${c.width || '—'}</td>
+      <td>${c.height || '—'}</td>
+      <td>${c.length || '—'}</td>
+      <td>${c.weight || '—'}</td>
+      <td style="color:var(--text-2)">${esc(locShort)}</td>
+      <td>${tagDots}</td>
+      ${customCells}
+      <td></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Detail panel ──────────────────────────────────────────────────────
+function openFactoryDetail(cageId) {
+  const cage = FACTORY_ALL_CAGES.find(c => c.id === cageId);
+  if (!cage) return;
+  FDP_CAGE_ID = cageId;
+
+  const fd = FACTORY_DATA[cageId] || {};
+  FDP_DRAFT_TAGS = { ...(fd.tags || {}) };
+  FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
+
+  document.getElementById('fdp-name').textContent = cage.name;
+  document.getElementById('fdp-id').textContent = 'ID: ' + cageId;
+
+  const qrUrl = API_BASE + '/cage/' + cageId;
+
+  // Props
+  const props = [
+    { label:'Width',  value: cage.width  ? cage.width  + ' mm' : '—' },
+    { label:'Height', value: cage.height ? cage.height + ' mm' : '—' },
+    { label:'Length', value: cage.length ? cage.length + ' mm' : '—' },
+    { label:'Weight', value: cage.weight ? cage.weight + ' kg' : '—' },
+  ];
+
+  // Tags HTML
+  const tagsHtml = FACTORY_TAG_DEFS.map(t => {
+    const on = FDP_DRAFT_TAGS[t.key] ? ' on' : '';
+    return `<div class="tag-toggle${on}" id="ftag-${t.key}" onclick="toggleFdpTag('${t.key}')">
+      <span class="ftag-dot" style="background:${t.color}"></span>${t.label}
+    </div>`;
+  }).join('');
+
+  // Custom fields HTML
+  const customHtml = FACTORY_CUSTOM_FIELDS.map(f => `
+    <div class="cf-item">
+      <div class="cf-label">${esc(f.name)}</div>
+      <input class="cf-input" type="${f.type}" id="cf-${f.key}"
+        value="${esc(FDP_DRAFT_CUSTOM[f.key] || '')}"
+        placeholder="${f.type === 'number' ? '0' : '—'}"
+        oninput="FDP_DRAFT_CUSTOM['${f.key}']=this.value">
+    </div>
+  `).join('');
+
+  document.getElementById('fdp-body').innerHTML = `
+    <div class="qr-wrap">
+      <div class="qr-box" id="fdp-qr-box"></div>
+      <div class="qr-link">${esc(qrUrl)}</div>
+    </div>
+    <div class="fdp-props">
+      ${props.map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
+    </div>
+    <div class="fdp-section-label">Tags</div>
+    <div class="tags-editor">${tagsHtml}</div>
+    ${FACTORY_CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
+  `;
+
+  // Generate QR
+  const qrBox = document.getElementById('fdp-qr-box');
+  qrBox.innerHTML = '';
+  new QRCode(qrBox, { text: qrUrl, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+
+  document.getElementById('factory-detail-overlay').classList.add('open');
+}
+
+function closeFactoryDetail() {
+  document.getElementById('factory-detail-overlay').classList.remove('open');
+  FDP_CAGE_ID = null;
+}
+
+function handleFdpOverlayClick(e) {
+  if (e.target === document.getElementById('factory-detail-overlay')) closeFactoryDetail();
+}
+
+function toggleFdpTag(key) {
+  FDP_DRAFT_TAGS[key] = !FDP_DRAFT_TAGS[key];
+  const el = document.getElementById('ftag-' + key);
+  if (el) el.classList.toggle('on', !!FDP_DRAFT_TAGS[key]);
+}
+
+async function saveFdpChanges() {
+  if (!FDP_CAGE_ID) return;
+  // Collect latest custom field values from inputs
+  FACTORY_CUSTOM_FIELDS.forEach(f => {
+    const el = document.getElementById('cf-' + f.key);
+    if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
+  });
+  try {
+    const res = await fetch(API_BASE + '/api/factory-data', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SESSION_PIN },
+      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM }),
+    });
+    if (!res.ok) throw new Error('Save failed');
+    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM } };
+    renderFactoryTable();
+    toast('Factory data saved', 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ── Print QR ─────────────────────────────────────────────────────────
+function printFactoryQR() {
+  if (!FDP_CAGE_ID) return;
+  const cage = FACTORY_ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+  if (!cage) return;
+
+  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
+  document.getElementById('fp-name').textContent = cage.name;
+  document.getElementById('fp-meta').textContent = 'ID: ' + FDP_CAGE_ID;
+  document.getElementById('fp-url').textContent = qrUrl;
+  const dims = [
+    cage.width  ? 'W: '+cage.width+'mm'  : null,
+    cage.height ? 'H: '+cage.height+'mm' : null,
+    cage.length ? 'L: '+cage.length+'mm' : null,
+    cage.weight ? cage.weight+'kg'        : null,
+  ].filter(Boolean).join('  ·  ');
+  document.getElementById('fp-dims').textContent = dims;
+
+  const fpQr = document.getElementById('fp-qr');
+  fpQr.innerHTML = '';
+  new QRCode(fpQr, { text: qrUrl, width: 200, height: 200, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('factory-print-area').style.display = 'flex';
+  setTimeout(() => { window.print(); document.getElementById('factory-print-area').style.display = 'none'; }, 300);
+}
+
+// ── Custom fields ─────────────────────────────────────────────────────
+function openAddFieldModal() {
+  document.getElementById('new-field-name').value = '';
+  document.getElementById('new-field-type').value = 'text';
+  document.getElementById('field-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-field-name').focus(), 80);
+}
+
+function closeAddFieldModal() {
+  document.getElementById('field-modal-overlay').classList.add('hidden');
+}
+
+function handleFieldModalOverlay(e) {
+  if (e.target === document.getElementById('field-modal-overlay')) closeAddFieldModal();
+}
+
+async function confirmAddField() {
+  const name = document.getElementById('new-field-name').value.trim();
+  if (!name) { toast('Field name is required', 'error'); return; }
+  const type = document.getElementById('new-field-type').value;
+  const key  = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
+  FACTORY_CUSTOM_FIELDS.push({ name, type, key });
+  try {
+    await fetch(API_BASE + '/api/factory-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SESSION_PIN },
+      body: JSON.stringify({ customFields: FACTORY_CUSTOM_FIELDS }),
+    });
+    closeAddFieldModal();
+    renderFactoryTable();
+    toast('Field added', 'success');
+  } catch(e) {
+    toast('Failed to save field: ' + e.message, 'error');
+  }
+}
+
+// Deep link support: #factory/cageId
+(function checkDeepLink() {
+  const hash = window.location.hash;
+  if (hash && hash.startsWith('#factory/')) {
+    const id = hash.slice(9);
+    window.addEventListener('factory-ready', () => openFactoryDetail(id), { once: true });
+  }
+})();
+
 </script>
 </body>
 </html>
