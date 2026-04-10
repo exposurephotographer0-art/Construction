@@ -976,9 +976,19 @@ function toggleFdpTag(key) {
 
 async function saveFdpChanges() {
   if (!FDP_CAGE_ID) return;
+
+  // Use whichever PIN has write access.
+  // - If the user logged in with the write PIN directly, READ_PIN IS the write PIN.
+  // - If the user unlocked separately via the write PIN modal, WRITE_PIN holds it.
+  // - If only a read PIN is stored, we can't save — surface a clear error.
   const pin = WRITE_PIN || (ACCESS_LEVEL === 'write' ? READ_PIN : null);
-  if (!pin) return;
-  // Collect custom field values
+  if (!pin) {
+    toast('Enter write PIN first (tap Edit →)', 'error');
+    openPinModal();
+    return;
+  }
+
+  // Collect custom field values from DOM
   CUSTOM_FIELDS.forEach(f => {
     const el = document.getElementById('cf-' + f.key);
     if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
@@ -988,6 +998,7 @@ async function saveFdpChanges() {
     const el = document.getElementById('mesh-comment-' + m);
     if (el) FDP_DRAFT_MESH_COMMENTS[m] = el.value;
   });
+
   try {
     const res = await fetch(API_BASE + '/api/factory-data', {
       method: 'PUT',
@@ -1000,7 +1011,28 @@ async function saveFdpChanges() {
         mesh_comments: FDP_DRAFT_MESH_COMMENTS,
       }),
     });
-    if (!res.ok) throw new Error('Save failed');
+
+    if (!res.ok) {
+      // Parse the actual error from the worker response
+      let errMsg = 'HTTP ' + res.status;
+      try {
+        const errData = await res.json();
+        errMsg = errData.error || errMsg;
+      } catch(_) {}
+
+      // If the PIN was rejected, clear it so the user is prompted again
+      if (res.status === 401 || res.status === 403) {
+        WRITE_PIN = '';
+        localStorage.removeItem(LS_WRITE_PIN);
+        FDP_EDIT_MODE = false;
+        renderDetailBody();
+        toast('PIN rejected — ' + errMsg, 'error');
+      } else {
+        toast('Save failed: ' + errMsg, 'error');
+      }
+      return;
+    }
+
     FACTORY_DATA[FDP_CAGE_ID] = {
       ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
       tags:          { ...FDP_DRAFT_TAGS },
@@ -1009,7 +1041,7 @@ async function saveFdpChanges() {
       mesh_comments: { ...FDP_DRAFT_MESH_COMMENTS },
     };
     renderTable();
-    toast('Cage data saved', 'success');
+    toast('Cage data saved ✓', 'success');
   } catch(e) {
     toast('Save failed: ' + e.message, 'error');
   }
