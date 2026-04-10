@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cage Construction — Site Tracker</title>
+<title>Cage Construction — QR Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
@@ -24,15 +24,6 @@
   --amber-dim: rgba(232,168,48,0.12);
   --amber-glow:rgba(232,168,48,0.25);
 
-  /* Zone colours */
-  --z-scaffold: #3b82f6;
-  --z-scaffold-dim: rgba(59,130,246,0.12);
-  --z-spmt:     #a855f7;
-  --z-spmt-dim: rgba(168,85,247,0.12);
-  --z-final:    #22c55e;
-  --z-final-dim:rgba(34,197,94,0.12);
-  --z-unplaced: rgba(255,255,255,0.06);
-
   --radius:    8px;
   --radius-lg: 14px;
   --mono: 'Space Mono', monospace;
@@ -42,7 +33,6 @@
 html,body{height:100%;background:var(--void);color:var(--text-1);font-family:var(--sans);}
 body{display:flex;flex-direction:column;overflow:hidden;}
 
-/* ── Scrollbar ── */
 ::-webkit-scrollbar{width:4px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:var(--line-mid);border-radius:2px;}
@@ -77,7 +67,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   background:var(--text-3);transition:background .3s;
   flex-shrink:0;
 }
-.api-indicator.ok{background:var(--z-final);}
+.api-indicator.ok{background:#22c55e;}
 .api-indicator.err{background:#f87171;}
 
 /* ── Auth Screen ── */
@@ -112,62 +102,27 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 }
 .auth-btn:hover{filter:brightness(1.1);}
 .auth-err{margin-top:12px;font:400 12px var(--mono);color:#f87171;}
-.auth-api-row{margin-bottom:18px;}
-.auth-api-input{
-  background:var(--surface-3);border:1px solid var(--line);border-radius:var(--radius);
-  padding:9px 12px;color:var(--text-2);font:400 12px var(--mono);width:100%;
-}
-.auth-api-input:focus{outline:none;border-color:var(--amber);}
-.auth-api-label{font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;text-align:left;display:block;margin-bottom:5px;}
 
 /* ── App Layout ── */
-.app{flex:1;display:flex;overflow:hidden;}
+.app{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 
-/* ── Sidebar ── */
-.sidebar{
-  width:260px;flex-shrink:0;
-  background:var(--surface-1);
-  border-right:1px solid var(--line);
-  display:flex;flex-direction:column;
-  overflow:hidden;
+/* ── Toolbar ── */
+.toolbar{
+  padding:12px 20px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  flex-shrink:0;background:var(--surface-1);
 }
-.sidebar-top{padding:18px 18px 12px;border-bottom:1px solid var(--line);}
-.sidebar-search{
-  background:var(--surface-3);border:1px solid var(--line);border-radius:var(--radius);
-  padding:8px 12px;color:var(--text-1);font:400 13px var(--sans);width:100%;
+.toolbar-search{
+  background:var(--surface-3);border:1px solid var(--line);border-radius:7px;
+  padding:7px 12px;color:var(--text-1);font:400 12px var(--mono);width:220px;
   transition:border-color .15s;
 }
-.sidebar-search:focus{outline:none;border-color:var(--amber);}
-.sidebar-search::placeholder{color:var(--text-3);}
-.sidebar-filters{display:flex;flex-direction:column;gap:4px;padding:10px 12px 12px;}
-.zone-filter{
-  display:flex;align-items:center;gap:10px;
-  padding:8px 10px;border-radius:7px;cursor:pointer;
-  border:1px solid transparent;transition:all .12s;
-  background:transparent;width:100%;text-align:left;
-}
-.zone-filter:hover{background:var(--surface-3);}
-.zone-filter.active-f{background:var(--surface-3);border-color:var(--line-mid);}
-.zone-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
-.zone-label{font:600 12px var(--sans);color:var(--text-2);flex:1;}
-.zone-count{font:700 11px var(--mono);color:var(--text-3);}
-.zone-filter.active-f .zone-label{color:var(--text-1);}
-.sidebar-stats{padding:14px 18px;border-top:1px solid var(--line);margin-top:auto;}
-.stat-line{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
-.stat-line:last-child{margin-bottom:0;}
-.stat-k{font:400 11px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;}
-.stat-v{font:700 13px var(--mono);color:var(--text-1);}
+.toolbar-search:focus{outline:none;border-color:var(--amber);}
+.toolbar-search::placeholder{color:var(--text-3);}
+.t-stat{font:700 11px var(--mono);padding:4px 10px;border-radius:5px;background:var(--surface-3);color:var(--text-2);border:1px solid var(--line);}
+.t-stat span{color:var(--amber);}
 
-/* ── Main ── */
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.main-toolbar{
-  padding:14px 24px;
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  flex-shrink:0;
-  background:var(--surface-1);
-}
-.toolbar-title{font:700 15px var(--sans);letter-spacing:-.03em;flex:1;}
+/* ── Buttons ── */
 .btn{
   border:none;border-radius:7px;padding:8px 16px;
   font:600 12px var(--sans);cursor:pointer;
@@ -180,243 +135,41 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .btn-amber:hover{filter:brightness(1.1);}
 .btn-sm{padding:5px 11px;font-size:11px;}
 .btn-xs{padding:3px 8px;font-size:10px;}
+.btn-danger-ghost{background:transparent;border:1px solid #f87171;color:#f87171;border-radius:7px;padding:7px 14px;font:600 11px var(--sans);cursor:pointer;transition:all .12s;}
+.btn-danger-ghost:hover{background:rgba(248,113,113,.1);}
 
-/* ── Zone Columns view ── */
-.zone-board{
-  flex:1;overflow:hidden;
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:0;
-}
-.zone-col{
-  display:flex;flex-direction:column;
-  border-right:1px solid var(--line);overflow:hidden;
-}
-.zone-col:last-child{border-right:none;}
-.zone-header{
-  padding:14px 18px 12px;
-  border-bottom:1px solid var(--line);
-  flex-shrink:0;
-  display:flex;align-items:center;gap:10px;
-}
-.zone-header-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
-.zone-header-name{font:700 13px var(--sans);letter-spacing:-.02em;flex:1;}
-.zone-header-count{font:700 11px var(--mono);color:var(--text-3);}
-.zone-body{flex:1;overflow-y:auto;padding:10px;}
-.zone-empty{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  height:100%;color:var(--text-3);gap:8px;padding:40px 20px;text-align:center;
-}
-.zone-empty-icon{font-size:28px;opacity:.4;}
-.zone-empty-txt{font:400 12px var(--mono);text-transform:uppercase;letter-spacing:.1em;}
-
-/* ── Cage Card ── */
-.cage-card{
-  background:var(--surface-2);
-  border:1px solid var(--line);
-  border-radius:10px;
-  padding:13px 14px;
-  margin-bottom:7px;
-  cursor:pointer;
-  transition:border-color .15s,transform .1s,box-shadow .15s;
-  position:relative;overflow:hidden;
-}
-.cage-card::before{
-  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
-  background:var(--zone-accent,var(--text-3));
-}
-.cage-card:hover{border-color:var(--line-mid);transform:translateY(-1px);box-shadow:0 4px 18px rgba(0,0,0,.3);}
-.cage-card.selected{border-color:var(--amber);box-shadow:0 0 0 1px var(--amber-glow);}
-.cage-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;}
-.cage-name{font:700 14px var(--sans);letter-spacing:-.02em;}
-.cage-trip{font:400 10px var(--mono);color:var(--text-3);margin-top:2px;}
-.cage-dims{
-  display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;
-}
-.dim-tag{
-  font:400 10px var(--mono);
-  padding:2px 7px;border-radius:4px;
-  background:var(--surface-3);color:var(--text-3);
-  border:1px solid var(--line);
-}
-.cage-zone-badge{
-  display:inline-flex;align-items:center;gap:5px;
-  font:600 10px var(--mono);padding:3px 8px;border-radius:5px;
-  letter-spacing:.04em;text-transform:uppercase;
-}
-.cage-actions{display:flex;gap:5px;margin-top:9px;flex-wrap:wrap;}
-.zone-btn{
-  flex:1;min-width:0;
-  padding:5px 6px;border:1px solid var(--line);border-radius:6px;
-  background:var(--surface-3);color:var(--text-3);
-  font:600 10px var(--mono);cursor:pointer;
-  transition:all .12s;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-}
-.zone-btn:hover{border-color:var(--line-mid);color:var(--text-1);}
-.zone-btn.z-scaffold:hover{background:var(--z-scaffold-dim);border-color:var(--z-scaffold);color:var(--z-scaffold);}
-.zone-btn.z-spmt:hover{background:var(--z-spmt-dim);border-color:var(--z-spmt);color:var(--z-spmt);}
-.zone-btn.z-final:hover{background:var(--z-final-dim);border-color:var(--z-final);color:var(--z-final);}
-.zone-btn.active-zone{opacity:.35;cursor:default;pointer-events:none;}
-
-/* ── List view ── */
-.list-view{flex:1;overflow-y:auto;padding:16px 24px;}
-.list-table{width:100%;border-collapse:collapse;font-size:13px;}
-.list-table th{
-  text-align:left;padding:8px 12px;
+/* ── Table ── */
+.table-wrap{flex:1;overflow:auto;}
+.cage-table{width:100%;border-collapse:collapse;font-size:12px;min-width:700px;}
+.cage-table th{
+  text-align:left;padding:9px 12px;
   font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;
-  border-bottom:1px solid var(--line);background:var(--surface-1);position:sticky;top:0;z-index:2;
+  border-bottom:1px solid var(--line);background:var(--surface-1);position:sticky;top:0;z-index:2;white-space:nowrap;
 }
-.list-table td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
-.list-table tr:hover td{background:var(--surface-2);}
-.list-table tr:last-child td{border-bottom:none;}
-
-/* ── History/log Panel ── */
-.log-panel{
-  width:320px;flex-shrink:0;
-  background:var(--surface-1);
-  border-left:1px solid var(--line);
-  display:flex;flex-direction:column;overflow:hidden;
-}
-.log-header{padding:14px 18px;border-bottom:1px solid var(--line);flex-shrink:0;}
-.log-title{font:700 13px var(--sans);letter-spacing:-.02em;}
-.log-body{flex:1;overflow-y:auto;padding:10px 14px;}
-.log-entry{
-  padding:9px 0;border-bottom:1px solid var(--line);
-  display:flex;gap:10px;align-items:flex-start;
-}
-.log-entry:last-child{border-bottom:none;}
-.log-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:4px;}
-.log-info{flex:1;min-width:0;}
-.log-cage{font:600 12px var(--sans);color:var(--text-1);}
-.log-move{font:400 11px var(--mono);color:var(--text-2);margin-top:2px;}
-.log-time{font:400 10px var(--mono);color:var(--text-3);margin-top:2px;}
-.log-empty{padding:30px 0;text-align:center;font:400 11px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;}
-
-/* ── View toggle ── */
-.view-toggle{display:flex;background:var(--surface-3);border-radius:7px;padding:3px;border:1px solid var(--line);}
-.vt-btn{
-  padding:5px 12px;border-radius:5px;border:none;background:transparent;
-  color:var(--text-3);font:600 11px var(--mono);cursor:pointer;transition:all .12s;
-}
-.vt-btn.active{background:var(--surface-1);color:var(--text-1);}
-
-/* ── Toast ── */
-.toast-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999;pointer-events:none;}
-.toast{
-  background:var(--surface-2);border:1px solid var(--line-mid);border-radius:9px;
-  padding:11px 16px;font:400 13px var(--sans);color:var(--text-1);
-  box-shadow:0 8px 30px rgba(0,0,0,.5);
-  display:flex;align-items:center;gap:10px;
-  animation:toastIn .2s ease;pointer-events:auto;
-  min-width:220px;max-width:340px;
-}
-.toast.success .toast-icon{color:var(--z-final);}
-.toast.error .toast-icon{color:#f87171;}
-.toast.info .toast-icon{color:var(--amber);}
-@keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
-
-/* ── Modal ── */
-.modal-overlay{
-  position:fixed;inset:0;background:rgba(0,0,0,.65);
-  display:flex;align-items:center;justify-content:center;z-index:100;
-  backdrop-filter:blur(4px);
-}
-.modal-overlay.hidden{display:none;}
-.modal{
-  background:var(--surface-2);border:1px solid var(--line-mid);
-  border-radius:var(--radius-lg);padding:28px 30px;
-  width:100%;max-width:460px;
-  box-shadow:0 24px 60px rgba(0,0,0,.6);
-}
-.modal-title{font:700 18px var(--sans);letter-spacing:-.04em;margin-bottom:4px;}
-.modal-sub{font:400 11px var(--mono);color:var(--text-3);margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em;}
-.modal-field{margin-bottom:14px;}
-.modal-label{font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:5px;}
-.modal-input{
-  background:var(--surface-3);border:1px solid var(--line);border-radius:var(--radius);
-  padding:9px 13px;color:var(--text-1);font:400 13px var(--sans);width:100%;
-}
-.modal-input:focus{outline:none;border-color:var(--amber);}
-.modal-textarea{
-  background:var(--surface-3);border:1px solid var(--line);border-radius:var(--radius);
-  padding:9px 13px;color:var(--text-1);font:400 12px var(--mono);width:100%;
-  resize:vertical;min-height:80px;
-}
-.modal-textarea:focus{outline:none;border-color:var(--amber);}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
-.zone-select-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px;}
-.zone-select-btn{
-  padding:10px 8px;border-radius:8px;border:1px solid var(--line);
-  background:var(--surface-3);color:var(--text-2);
-  font:600 11px var(--mono);cursor:pointer;
-  text-align:center;transition:all .15s;
-  display:flex;flex-direction:column;align-items:center;gap:5px;
-}
-.zone-select-btn:hover,.zone-select-btn.sel{border-width:1px;}
-.zone-select-btn.sel-scaffold{background:var(--z-scaffold-dim);border-color:var(--z-scaffold);color:var(--z-scaffold);}
-.zone-select-btn.sel-spmt{background:var(--z-spmt-dim);border-color:var(--z-spmt);color:var(--z-spmt);}
-.zone-select-btn.sel-final{background:var(--z-final-dim);border-color:var(--z-final);color:var(--z-final);}
-.zone-select-icon{font-size:18px;}
-
-/* Info badge in list view */
-.zbadge{
-  display:inline-flex;align-items:center;gap:5px;
-  font:600 10px var(--mono);padding:3px 8px;border-radius:5px;
-  letter-spacing:.04em;text-transform:uppercase;border:1px solid;
-}
-.zbadge-scaffold{color:var(--z-scaffold);background:var(--z-scaffold-dim);border-color:rgba(59,130,246,.3);}
-.zbadge-spmt{color:var(--z-spmt);background:var(--z-spmt-dim);border-color:rgba(168,85,247,.3);}
-.zbadge-final{color:var(--z-final);background:var(--z-final-dim);border-color:rgba(34,197,94,.3);}
-.zbadge-none{color:var(--text-3);background:transparent;border-color:var(--line);}
-
-/* Loading spinner */
-.spinner{width:16px;height:16px;border:2px solid var(--line-mid);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
-@keyframes spin{to{transform:rotate(360deg);}}
-.loading-screen{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;}
-.loading-screen .spinner{width:28px;height:28px;}
-.loading-label{font:400 12px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;}
-
-/* responsive */
-@media(max-width:900px){
-  .sidebar{width:210px;}
-  .log-panel{display:none;}
-  .zone-board{grid-template-columns:1fr 1fr;}
-}
-@media(max-width:650px){
-  .sidebar{display:none;}
-  .zone-board{grid-template-columns:1fr;}
-}
-
-/* ── FACTORY TAB STYLES ── */
-.tab-nav{display:flex;gap:2px;background:var(--surface-2);border-radius:8px;padding:3px;border:1px solid var(--line);margin:0 12px;}
-.tab-btn{padding:5px 14px;border-radius:6px;border:none;background:transparent;color:var(--text-3);font:600 11px var(--mono);cursor:pointer;transition:all .12s;white-space:nowrap;}
-.tab-btn.active{background:var(--surface-1);color:var(--text-1);}
-
-.factory-app{flex:1;display:flex;flex-direction:column;overflow:hidden;}
-.factory-toolbar{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;background:var(--surface-1);}
-.factory-search{background:var(--surface-3);border:1px solid var(--line);border-radius:7px;padding:7px 12px;color:var(--text-1);font:400 12px var(--mono);width:220px;transition:border-color .15s;}
-.factory-search:focus{outline:none;border-color:var(--amber);}
-.factory-search::placeholder{color:var(--text-3);}
-.f-stat{font:700 11px var(--mono);padding:4px 10px;border-radius:5px;background:var(--surface-3);color:var(--text-2);border:1px solid var(--line);}
-.f-stat span{color:var(--amber);}
-
-.factory-table-wrap{flex:1;overflow:auto;}
-.factory-table{width:100%;border-collapse:collapse;font-size:12px;min-width:800px;}
-.factory-table th{text-align:left;padding:9px 12px;font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;border-bottom:1px solid var(--line);background:var(--surface-1);position:sticky;top:0;z-index:2;white-space:nowrap;}
-.factory-table th.add-th{color:var(--amber);cursor:pointer;text-align:center;padding:9px 8px;width:36px;}
-.factory-table th.add-th:hover{color:#fbbf24;}
-.factory-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.factory-table tr{cursor:pointer;transition:background .1s;}
-.factory-table tr:hover td{background:var(--surface-2);}
-.factory-table tr:last-child td{border-bottom:none;}
+.cage-table th.add-th{color:var(--amber);cursor:pointer;text-align:center;padding:9px 8px;width:36px;}
+.cage-table th.add-th:hover{color:#fbbf24;}
+.cage-table td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cage-table tr{cursor:pointer;transition:background .1s;}
+.cage-table tr:hover td{background:var(--surface-2);}
+.cage-table tr:last-child td{border-bottom:none;}
 .cage-ref-cell{font:700 14px var(--sans);color:var(--amber);}
 .ftag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;border:1px solid rgba(255,255,255,.15);}
 
-/* Factory Detail Panel */
-.factory-detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:stretch;justify-content:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px);}
-.factory-detail-overlay.open{opacity:1;pointer-events:all;}
-.factory-detail-panel{background:var(--surface-1);border-left:1px solid var(--line-mid);width:480px;max-width:100vw;height:100vh;display:flex;flex-direction:column;transform:translateX(40px);transition:transform .25s;box-shadow:-20px 0 60px rgba(0,0,0,.5);}
-.factory-detail-overlay.open .factory-detail-panel{transform:translateX(0);}
+/* ── Detail Panel ── */
+.detail-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
+  display:flex;align-items:stretch;justify-content:flex-end;
+  opacity:0;pointer-events:none;transition:opacity .25s;backdrop-filter:blur(4px);
+}
+.detail-overlay.open{opacity:1;pointer-events:all;}
+.detail-panel{
+  background:var(--surface-1);border-left:1px solid var(--line-mid);
+  width:480px;max-width:100vw;height:100vh;
+  display:flex;flex-direction:column;
+  transform:translateX(40px);transition:transform .25s;
+  box-shadow:-20px 0 60px rgba(0,0,0,.5);
+}
+.detail-overlay.open .detail-panel{transform:translateX(0);}
 .fdp-header{padding:22px 22px 16px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0;}
 .fdp-name{font:900 30px var(--sans);letter-spacing:-.04em;color:var(--amber);}
 .fdp-id{font:400 10px var(--mono);color:var(--text-3);margin-top:3px;letter-spacing:.05em;}
@@ -437,20 +190,72 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .tag-toggle{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer;transition:all .12s;background:var(--surface-2);font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);}
 .tag-toggle:hover{border-color:var(--line-mid);color:var(--text-2);}
 .tag-toggle.on{border-color:var(--amber);background:var(--amber-dim);color:var(--text-1);}
+/* Read-only tags: no hover/cursor interaction */
+.tag-toggle.readonly{cursor:default;pointer-events:none;opacity:.75;}
 
 .custom-fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
 .cf-item{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;}
 .cf-label{font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px;}
 .cf-input{background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:6px 9px;color:var(--text-1);font:400 13px var(--mono);width:100%;transition:border-color .15s;}
 .cf-input:focus{outline:none;border-color:var(--amber);}
+.cf-input:disabled{opacity:.5;cursor:default;}
+.cf-value{font:400 13px var(--mono);color:var(--text-2);}
 
-.btn-danger-ghost{background:transparent;border:1px solid #f87171;color:#f87171;border-radius:7px;padding:7px 14px;font:600 11px var(--sans);cursor:pointer;transition:all .12s;}
-.btn-danger-ghost:hover{background:rgba(248,113,113,.1);}
+/* Lock/unlock banner */
+.lock-banner{
+  display:flex;align-items:center;gap:10px;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:8px;
+  padding:12px 16px;margin-bottom:14px;
+}
+.lock-icon{font-size:18px;flex-shrink:0;}
+.lock-text{flex:1;font:400 11px var(--mono);color:var(--text-3);}
+.lock-text strong{color:var(--text-2);display:block;font:700 12px var(--sans);margin-bottom:2px;}
+
+/* PIN unlock modal */
+.pin-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
+.pin-modal-overlay.hidden{display:none;}
+.pin-modal{background:var(--surface-2);border:1px solid var(--line-mid);border-radius:var(--radius-lg);padding:28px 30px;width:100%;max-width:360px;box-shadow:0 24px 60px rgba(0,0,0,.6);text-align:center;}
+.pin-modal-title{font:700 18px var(--sans);letter-spacing:-.04em;margin-bottom:6px;}
+.pin-modal-sub{font:400 11px var(--mono);color:var(--text-3);margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em;}
+.pin-modal-input{
+  background:var(--surface-3);border:1px solid var(--line-mid);border-radius:var(--radius);
+  padding:12px 16px;color:var(--text-1);font:700 20px var(--mono);letter-spacing:.3em;
+  text-align:center;width:100%;transition:border-color .2s;margin-bottom:10px;
+}
+.pin-modal-input:focus{outline:none;border-color:var(--amber);}
+.pin-modal-err{font:400 11px var(--mono);color:#f87171;margin-bottom:10px;min-height:16px;}
+.pin-modal-footer{display:flex;gap:8px;justify-content:center;margin-top:4px;}
 
 /* Field modal */
 .field-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);}
 .field-modal-overlay.hidden{display:none;}
 .field-modal{background:var(--surface-2);border:1px solid var(--line-mid);border-radius:var(--radius-lg);padding:28px 30px;width:100%;max-width:380px;box-shadow:0 24px 60px rgba(0,0,0,.6);}
+.modal-title{font:700 18px var(--sans);letter-spacing:-.04em;margin-bottom:4px;}
+.modal-sub{font:400 11px var(--mono);color:var(--text-3);margin-bottom:20px;text-transform:uppercase;letter-spacing:.08em;}
+.modal-field{margin-bottom:14px;}
+.modal-label{font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:5px;}
+.modal-input{background:var(--surface-3);border:1px solid var(--line);border-radius:var(--radius);padding:9px 13px;color:var(--text-1);font:400 13px var(--sans);width:100%);}
+.modal-input:focus{outline:none;border-color:var(--amber);}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:20px;}
+
+/* ── Toast ── */
+.toast-wrap{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:8px;z-index:999;pointer-events:none;}
+.toast{
+  background:var(--surface-2);border:1px solid var(--line-mid);border-radius:9px;
+  padding:11px 16px;font:400 13px var(--sans);color:var(--text-1);
+  box-shadow:0 8px 30px rgba(0,0,0,.5);
+  display:flex;align-items:center;gap:10px;
+  animation:toastIn .2s ease;pointer-events:auto;
+  min-width:220px;max-width:340px;
+}
+.toast.success .toast-icon{color:#22c55e;}
+.toast.error .toast-icon{color:#f87171;}
+.toast.info .toast-icon{color:var(--amber);}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* Spinner */
+.spinner{width:16px;height:16px;border:2px solid var(--line-mid);border-top-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
 /* Print */
 @media print {
@@ -463,7 +268,6 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   .fp-url{font-size:9px;color:#444;letter-spacing:1px;text-align:center;max-width:280px;word-break:break-all;}
   .fp-dims{margin-top:14px;font-size:11px;color:#333;text-align:center;letter-spacing:1px;}
 }
-
 </style>
 </head>
 <body>
@@ -473,11 +277,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   <div class="header-mark">CC</div>
   <div class="header-text">
     <div class="header-title">Cage Construction</div>
-    <div class="header-sub">Site Tracker</div>
-  </div>
-  <div class="tab-nav">
-    <button class="tab-btn active" id="tab-construction" onclick="switchTab('construction')">🏗 Construction</button>
-    <button class="tab-btn" id="tab-factory" onclick="switchTab('factory')">🏭 Factory</button>
+    <div class="header-sub">QR Tracker</div>
   </div>
   <div class="header-pill" id="cage-count-pill">—</div>
   <div class="api-indicator" id="api-dot" title="API status"></div>
@@ -486,209 +286,78 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 <!-- ── Auth Screen ── -->
 <div class="auth-screen" id="auth-screen">
   <div class="auth-card">
-    <div class="auth-icon">🏗️</div>
-    <div class="auth-title">Site Access</div>
-    <div class="auth-sub">Construction Site Tracker</div>
+    <div class="auth-icon">📦</div>
+    <div class="auth-title">Cage Tracker</div>
+    <div class="auth-sub">Enter read PIN to view</div>
     <input class="auth-input" id="pin-input" type="password" maxlength="12"
       placeholder="• • • • • •" autocomplete="current-password">
-    <button class="auth-btn" onclick="doAuth()">Enter Site →</button>
-    <div class="auth-err hidden" id="auth-err"></div>
+    <button class="auth-btn" onclick="doAuth()">Continue →</button>
+    <div class="auth-err hidden" id="auth-err" style="margin-top:12px;font:400 12px var(--mono);color:#f87171;"></div>
   </div>
 </div>
 
-<!-- ── App (hidden until auth) ── -->
+<!-- ── Main App ── -->
 <div class="app hidden" id="app">
 
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="sidebar-top">
-      <input class="sidebar-search" type="text" id="search-input" placeholder="Search cage…" oninput="applyFilters()">
-    </div>
-    <div class="sidebar-filters" id="zone-filters">
-      <button class="zone-filter active-f" onclick="setZoneFilter('all',this)">
-        <div class="zone-dot" style="background:var(--text-3)"></div>
-        <div class="zone-label">All Cages</div>
-        <div class="zone-count" id="fc-all">0</div>
-      </button>
-      <button class="zone-filter" onclick="setZoneFilter('scaffold',this)">
-        <div class="zone-dot" style="background:var(--z-scaffold)"></div>
-        <div class="zone-label">Scaffold Storage</div>
-        <div class="zone-count" id="fc-scaffold">0</div>
-      </button>
-      <button class="zone-filter" onclick="setZoneFilter('spmt',this)">
-        <div class="zone-dot" style="background:var(--z-spmt)"></div>
-        <div class="zone-label">SPMT</div>
-        <div class="zone-count" id="fc-spmt">0</div>
-      </button>
-      <button class="zone-filter" onclick="setZoneFilter('final',this)">
-        <div class="zone-dot" style="background:var(--z-final)"></div>
-        <div class="zone-label">Final Location</div>
-        <div class="zone-count" id="fc-final">0</div>
-      </button>
-      <button class="zone-filter" onclick="setZoneFilter('unplaced',this)">
-        <div class="zone-dot" style="background:var(--text-3)"></div>
-        <div class="zone-label">Unplaced</div>
-        <div class="zone-count" id="fc-unplaced">0</div>
-      </button>
-    </div>
-    <div class="sidebar-stats">
-      <div class="stat-line"><span class="stat-k">Total shipped</span><span class="stat-v" id="st-total">—</span></div>
-      <div class="stat-line"><span class="stat-k">At final loc.</span><span class="stat-v" id="st-final" style="color:var(--z-final)">—</span></div>
-      <div class="stat-line"><span class="stat-k">In progress</span><span class="stat-v" id="st-progress" style="color:var(--amber)">—</span></div>
-      <div class="stat-line"><span class="stat-k">Unplaced</span><span class="stat-v" id="st-unplaced" style="color:var(--text-3)">—</span></div>
-    </div>
-  </div>
-
-  <!-- Main area -->
-  <div class="main">
-    <div class="main-toolbar">
-      <div class="toolbar-title" id="view-title">On-Site Cages</div>
-      <div class="view-toggle">
-        <button class="vt-btn active" id="vt-board" onclick="setView('board')">⊞ Board</button>
-        <button class="vt-btn" id="vt-list" onclick="setView('list')">≡ List</button>
-      </div>
-      <button class="btn btn-ghost btn-sm" onclick="refreshData()"><span class="spinner" style="width:11px;height:11px;border-width:1.5px;" id="refresh-spin"></span> Refresh</button>
-    </div>
-
-    <!-- Board view -->
-    <div class="zone-board" id="board-view">
-      <!-- Scaffold Storage -->
-      <div class="zone-col">
-        <div class="zone-header">
-          <div class="zone-header-dot" style="background:var(--z-scaffold)"></div>
-          <div class="zone-header-name">Scaffold Storage</div>
-          <div class="zone-header-count" id="col-count-scaffold">0</div>
-        </div>
-        <div class="zone-body" id="col-scaffold"></div>
-      </div>
-      <!-- SPMT -->
-      <div class="zone-col">
-        <div class="zone-header">
-          <div class="zone-header-dot" style="background:var(--z-spmt)"></div>
-          <div class="zone-header-name">SPMT</div>
-          <div class="zone-header-count" id="col-count-spmt">0</div>
-        </div>
-        <div class="zone-body" id="col-spmt"></div>
-      </div>
-      <!-- Final Location -->
-      <div class="zone-col">
-        <div class="zone-header">
-          <div class="zone-header-dot" style="background:var(--z-final)"></div>
-          <div class="zone-header-name">Final Location</div>
-          <div class="zone-header-count" id="col-count-final">0</div>
-        </div>
-        <div class="zone-body" id="col-final"></div>
-      </div>
-    </div>
-
-    <!-- List view -->
-    <div class="list-view hidden" id="list-view">
-      <table class="list-table">
-        <thead>
-          <tr>
-            <th>Cage</th>
-            <th>Dimensions</th>
-            <th>Weight</th>
-            <th>Zone</th>
-            <th>Notes</th>
-            <th>Move</th>
-          </tr>
-        </thead>
-        <tbody id="list-body"></tbody>
-      </table>
-    </div>
-
-    <!-- Loading -->
-    <div class="loading-screen hidden" id="loading-screen">
-      <div class="spinner"></div>
-      <div class="loading-label">Loading site data…</div>
-    </div>
-  </div>
-
-  <!-- Log panel -->
-  <div class="log-panel">
-    <div class="log-header">
-      <div class="log-title">Movement Log</div>
-    </div>
-    <div class="log-body" id="log-body">
-      <div class="log-empty">No moves yet</div>
-    </div>
-  </div>
-</div>
-
-<!-- ── Move Modal ── -->
-<div class="modal-overlay hidden" id="move-modal">
-  <div class="modal">
-    <div class="modal-title" id="modal-cage-name">Move Cage</div>
-    <div class="modal-sub" id="modal-cage-dims"></div>
-    <div class="modal-field">
-      <label class="modal-label">Select Zone</label>
-      <div class="zone-select-grid">
-        <button class="zone-select-btn" id="zsb-scaffold" onclick="selectZone('scaffold')">
-          <span class="zone-select-icon">🏗</span>Scaffold<br>Storage
-        </button>
-        <button class="zone-select-btn" id="zsb-spmt" onclick="selectZone('spmt')">
-          <span class="zone-select-icon">🚛</span>SPMT
-        </button>
-        <button class="zone-select-btn" id="zsb-final" onclick="selectZone('final')">
-          <span class="zone-select-icon">📍</span>Final<br>Location
-        </button>
-      </div>
-    </div>
-    <div class="modal-field">
-      <label class="modal-label">Notes <span style="color:var(--text-3)">(optional)</span></label>
-      <textarea class="modal-textarea" id="modal-notes" placeholder="e.g. Bay 4, position 2A…" rows="3"></textarea>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-amber" id="modal-confirm" onclick="confirmMove()">Confirm Move</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── Factory App ── -->
-<div class="factory-app hidden" id="factory-app">
-  <div class="factory-toolbar">
-    <input class="factory-search" type="text" id="factory-search" placeholder="Search cage…" oninput="renderFactoryTable()">
-    <div class="f-stat"><span id="factory-count">0</span> cages</div>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <input class="toolbar-search" type="text" id="search-input" placeholder="Search cage…" oninput="renderTable()">
+    <div class="t-stat"><span id="cage-count">0</span> cages</div>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="openAddFieldModal()">+ Add Field</button>
-    <button class="btn btn-ghost btn-sm" onclick="refreshFactoryData()">↺ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="refreshData()">
+      <span class="spinner" style="width:11px;height:11px;border-width:1.5px;" id="refresh-spin"></span> Refresh
+    </button>
   </div>
-  <div class="factory-table-wrap">
-    <table class="factory-table">
-      <thead id="factory-thead"></thead>
-      <tbody id="factory-tbody"></tbody>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table class="cage-table">
+      <thead id="cage-thead"></thead>
+      <tbody id="cage-tbody"></tbody>
     </table>
   </div>
+
 </div>
 
-<!-- Factory Detail Panel -->
-<div class="factory-detail-overlay" id="factory-detail-overlay" onclick="handleFdpOverlayClick(event)">
-  <div class="factory-detail-panel">
+<!-- ── Detail Panel ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="handleOverlayClick(event)">
+  <div class="detail-panel">
     <div class="fdp-header">
       <div>
         <div class="fdp-name" id="fdp-name">—</div>
         <div class="fdp-id" id="fdp-id"></div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;">
-        <button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">Save</button>
-        <button style="background:none;border:none;color:var(--text-2);font-size:18px;cursor:pointer;padding:2px 8px;" onclick="closeFactoryDetail()">✕</button>
+        <button class="btn btn-ghost btn-sm" id="fdp-save-btn" onclick="saveFdpChanges()" style="display:none;">💾 Save</button>
+        <button style="background:none;border:none;color:var(--text-2);font-size:18px;cursor:pointer;padding:2px 8px;" onclick="closeDetail()">✕</button>
       </div>
     </div>
     <div class="fdp-body" id="fdp-body"></div>
-    <div class="fdp-footer">
-      <button class="btn btn-amber btn-sm" onclick="printFactoryQR()">⎙ Print QR</button>
-      <button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">💾 Save Changes</button>
+    <div class="fdp-footer" id="fdp-footer"></div>
+  </div>
+</div>
+
+<!-- ── PIN Unlock Modal ── -->
+<div class="pin-modal-overlay hidden" id="pin-modal-overlay">
+  <div class="pin-modal">
+    <div class="pin-modal-title">🔐 Write Access</div>
+    <div class="pin-modal-sub">Enter write PIN to edit cage data</div>
+    <input class="pin-modal-input" id="write-pin-input" type="password" maxlength="12"
+      placeholder="• • • • • •" autocomplete="current-password">
+    <div class="pin-modal-err" id="write-pin-err"></div>
+    <div class="pin-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closePinModal()">Cancel</button>
+      <button class="btn btn-amber btn-sm" onclick="confirmWritePin()">Unlock →</button>
     </div>
   </div>
 </div>
 
-<!-- Add Field Modal -->
+<!-- ── Add Field Modal ── -->
 <div class="field-modal-overlay hidden" id="field-modal-overlay" onclick="handleFieldModalOverlay(event)">
   <div class="field-modal">
     <div class="modal-title" style="margin-bottom:4px">Add Custom Field</div>
-    <div class="modal-sub">Appears on every cage in the Factory tab</div>
+    <div class="modal-sub">Appears on every cage in the table</div>
     <div class="modal-field">
       <label class="modal-label">Field Name *</label>
       <input class="modal-input" type="text" id="new-field-name" placeholder="e.g. Batch Number">
@@ -721,46 +390,49 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 
 <script>
 // ═══════════════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════════════
+const API_BASE = 'https://cage-tracker-api.exposurephotographer0.workers.dev';
+const LS_READ_PIN  = 'cc_read_pin';
+const LS_WRITE_PIN = 'cc_write_pin';
+
+// ═══════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════
-const API_BASE  = 'https://cage-tracker-api.exposurephotographer0.workers.dev';
-let SESSION_PIN = '';
-let ALL_CAGES  = [];   // all shipped cages (location==='shipped')
-let FILTERED   = [];   // after search/filter
-let CURRENT_VIEW = 'board';
-let ZONE_FILTER  = 'all';
-let MODAL_CAGE   = null;
-let MODAL_ZONE   = null;
+let READ_PIN   = '';   // authenticated read PIN (required to view)
+let WRITE_PIN  = '';   // optional write PIN (for editing cage data)
 
-// Session movement log — persisted to localStorage
-const LS_LOG = 'cc_move_log';
-let MOVE_LOG = [];
+let ALL_CAGES        = [];
+let FACTORY_DATA     = {};    // cage_id → {tags:{}, custom_fields:{}}
+let CUSTOM_FIELDS    = [];    // [{name, type, key}]
 
-// Zone definitions
-const ZONES = {
-  scaffold: { label: 'Scaffold Storage', color: 'var(--z-scaffold)', cls: 'scaffold', icon: '🏗' },
-  spmt:     { label: 'SPMT',             color: 'var(--z-spmt)',     cls: 'spmt',     icon: '🚛' },
-  final:    { label: 'Final Location',   color: 'var(--z-final)',    cls: 'final',    icon: '📍' },
-};
+let FDP_CAGE_ID      = null;
+let FDP_DRAFT_TAGS   = {};
+let FDP_DRAFT_CUSTOM = {};
+let FDP_EDIT_MODE    = false; // whether write PIN is active for this panel
 
-// Parse zone from locationDetail
-function parseZone(cage) {
-  const d = (cage.locationDetail || cage.location_detail || '').toLowerCase();
-  if (d.includes('scaffold')) return 'scaffold';
-  if (d.includes('spmt'))     return 'spmt';
-  if (d.includes('final'))    return 'final';
-  return null;
-}
+const TAG_DEFS = [
+  { key:'tag_blue',      label:'Blue',        color:'#3b82f6' },
+  { key:'tag_blue_red',  label:'Blue & Red',  color:'#7c3aed' },
+  { key:'tag_green',     label:'Green',       color:'#22c55e' },
+  { key:'tag_green_red', label:'Green & Red', color:'#16a34a' },
+  { key:'tag_pink',      label:'Pink',        color:'#ec4899' },
+  { key:'tag_yellow',    label:'Yellow',      color:'#eab308' },
+  { key:'tag_white',     label:'White',       color:'#d1d5db' },
+  { key:'tag_purple',    label:'Purple',      color:'#a855f7' },
+  { key:'tag_orange',    label:'Orange',      color:'#f97316' },
+];
 
 // ═══════════════════════════════════════════════════════════════════════
-// AUTH
+// AUTH — read PIN required to enter app
 // ═══════════════════════════════════════════════════════════════════════
-// Persist PIN in localStorage for convenience
-const LS_PIN = 'cc_pin';
-
 window.addEventListener('DOMContentLoaded', () => {
-  const savedPin = localStorage.getItem(LS_PIN);
+  const savedPin = localStorage.getItem(LS_READ_PIN);
   if (savedPin) document.getElementById('pin-input').value = savedPin;
+
+  // Restore write PIN silently if saved
+  const savedWrite = localStorage.getItem(LS_WRITE_PIN);
+  if (savedWrite) WRITE_PIN = savedWrite;
 
   document.getElementById('pin-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') doAuth();
@@ -768,14 +440,14 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 async function doAuth() {
-  const pin    = document.getElementById('pin-input').value.trim();
-  const errEl  = document.getElementById('auth-err');
+  const pin   = document.getElementById('pin-input').value.trim();
+  const errEl = document.getElementById('auth-err');
   errEl.classList.add('hidden');
 
   if (!pin) { showAuthErr('Enter your PIN.'); return; }
 
   try {
-    const res = await fetch(API_BASE + '/api/auth', {
+    const res  = await fetch(API_BASE + '/api/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ pin }),
@@ -783,39 +455,16 @@ async function doAuth() {
     const data = await res.json();
     if (!data.ok) { showAuthErr(data.error || 'Incorrect PIN.'); return; }
 
-    SESSION_PIN = pin;
-    localStorage.setItem(LS_PIN, pin);
+    READ_PIN = pin;
+    localStorage.setItem(LS_READ_PIN, pin);
 
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('app').classList.remove('hidden');
     document.getElementById('api-dot').classList.add('ok');
 
-    // Load persisted move log from API
-    try {
-      const logRes = await fetch(API_BASE + '/api/construction_log', {
-        headers: { 'Authorization': 'Bearer ' + pin }
-      });
-      if (logRes.ok) {
-        const logData = await logRes.json();
-        if (logData.entries && logData.entries.length) {
-          MOVE_LOG = logData.entries.map(e => ({ ...e, ts: new Date(e.ts) }));
-          renderLog();
-        }
-      }
-    } catch(e) {
-      // fall back to localStorage if API unavailable
-      try {
-        const saved = localStorage.getItem(LS_LOG);
-        if (saved) {
-          MOVE_LOG = JSON.parse(saved).map(e => ({ ...e, ts: new Date(e.ts) }));
-          renderLog();
-        }
-      } catch(e2) {}
-    }
-
     await loadData();
   } catch(e) {
-    showAuthErr('Could not reach API. Check the URL.');
+    showAuthErr('Could not reach API. Check your connection.');
     document.getElementById('api-dot').classList.add('err');
   }
 }
@@ -827,39 +476,29 @@ function showAuthErr(msg) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// DATA
+// DATA LOADING
 // ═══════════════════════════════════════════════════════════════════════
 async function loadData() {
-  document.getElementById('loading-screen').classList.remove('hidden');
-  document.getElementById('board-view').classList.add('hidden');
-  document.getElementById('list-view').classList.add('hidden');
-
   try {
-    const res = await fetch(API_BASE + '/api/state', {
-      headers: { 'Authorization': 'Bearer ' + SESSION_PIN }
-    });
-    if (!res.ok) throw new Error('API error ' + res.status);
-    const state = await res.json();
+    const [stateRes, fdRes, fsRes] = await Promise.all([
+      fetch(API_BASE + '/api/state',            { headers: { Authorization: 'Bearer ' + READ_PIN } }),
+      fetch(API_BASE + '/api/factory-data',     { headers: { Authorization: 'Bearer ' + READ_PIN } }),
+      fetch(API_BASE + '/api/factory-settings', { headers: { Authorization: 'Bearer ' + READ_PIN } }),
+    ]);
+    const state = stateRes.ok ? await stateRes.json() : { cages: [] };
+    const fd    = fdRes.ok    ? await fdRes.json()    : { data: {} };
+    const fs    = fsRes.ok    ? await fsRes.json()    : { customFields: [] };
 
-    // Only cages that are shipped to site
-    ALL_CAGES = (state.cages || []).filter(c => c.location === 'shipped');
+    ALL_CAGES     = state.cages || [];
+    FACTORY_DATA  = fd.data || {};
+    CUSTOM_FIELDS = fs.customFields || [];
 
-    updateSidebar();
-    applyFilters();
-
-    document.getElementById('loading-screen').classList.add('hidden');
-    if (CURRENT_VIEW === 'board') document.getElementById('board-view').classList.remove('hidden');
-    else document.getElementById('list-view').classList.remove('hidden');
-
+    renderTable();
     document.getElementById('api-dot').classList.remove('err');
     document.getElementById('api-dot').classList.add('ok');
   } catch(e) {
-    document.getElementById('loading-screen').classList.add('hidden');
-    document.getElementById('api-dot').classList.remove('ok');
-    document.getElementById('api-dot').classList.add('err');
     toast('Failed to load data: ' + e.message, 'error');
-    // Show empty views
-    document.getElementById('board-view').classList.remove('hidden');
+    document.getElementById('api-dot').classList.add('err');
   }
 }
 
@@ -868,317 +507,331 @@ async function refreshData() {
   spin.style.display = 'inline-block';
   await loadData();
   spin.style.display = 'none';
+  toast('Refreshed', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// FILTERS & RENDER
+// TABLE RENDER
 // ═══════════════════════════════════════════════════════════════════════
-function applyFilters() {
+function renderTable() {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
-  FILTERED = ALL_CAGES.filter(c => {
-    const name = (c.name || '').toLowerCase();
-    const matchQ = !q || name.includes(q);
-    const zone = parseZone(c);
-    const matchZ =
-      ZONE_FILTER === 'all'      ? true :
-      ZONE_FILTER === 'unplaced' ? !zone :
-      zone === ZONE_FILTER;
-    return matchQ && matchZ;
-  });
-  renderBoard();
-  renderList();
-  updateSidebar();
-}
+  const filtered = ALL_CAGES.filter(c => !q || (c.name||'').toLowerCase().includes(q));
 
-function setZoneFilter(z, btn) {
-  ZONE_FILTER = z;
-  document.querySelectorAll('.zone-filter').forEach(b => b.classList.remove('active-f'));
-  btn.classList.add('active-f');
-  applyFilters();
-}
-
-function updateSidebar() {
-  const all      = ALL_CAGES.length;
-  const scaffold = ALL_CAGES.filter(c => parseZone(c) === 'scaffold').length;
-  const spmt     = ALL_CAGES.filter(c => parseZone(c) === 'spmt').length;
-  const final    = ALL_CAGES.filter(c => parseZone(c) === 'final').length;
-  const unplaced = ALL_CAGES.filter(c => !parseZone(c)).length;
-  const inProg   = scaffold + spmt;
-
-  document.getElementById('fc-all').textContent      = all;
-  document.getElementById('fc-scaffold').textContent  = scaffold;
-  document.getElementById('fc-spmt').textContent      = spmt;
-  document.getElementById('fc-final').textContent     = final;
-  document.getElementById('fc-unplaced').textContent  = unplaced;
-
-  document.getElementById('st-total').textContent    = all;
-  document.getElementById('st-final').textContent    = final;
-  document.getElementById('st-progress').textContent = inProg;
-  document.getElementById('st-unplaced').textContent = unplaced;
-
-  const pill = all === 0 ? '— cages' : `${all} cage${all!==1?'s':''} on site`;
+  document.getElementById('cage-count').textContent = ALL_CAGES.length;
+  const pill = ALL_CAGES.length === 0 ? '— cages' : `${ALL_CAGES.length} cage${ALL_CAGES.length!==1?'s':''}`;
   document.getElementById('cage-count-pill').textContent = pill;
-}
 
-// ── Board ──
-function renderBoard() {
-  const zones = ['scaffold','spmt','final'];
-  // Split FILTERED by zone — also show "unplaced" in scaffold column if filter is all/unplaced
-  const byZone = { scaffold:[], spmt:[], final:[] };
-  const unplaced = [];
+  // thead
+  const thead = document.getElementById('cage-thead');
+  const customCols = CUSTOM_FIELDS.map(f => `<th>${esc(f.name)}</th>`).join('');
+  thead.innerHTML = `<tr>
+    <th>Cage</th><th>W (mm)</th><th>H (mm)</th><th>L (mm)</th><th>Weight (kg)</th><th>Location</th><th>Tags</th>
+    ${customCols}
+    <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
+  </tr>`;
 
-  FILTERED.forEach(c => {
-    const z = parseZone(c);
-    if (z) byZone[z].push(c);
-    else unplaced.push(c);
-  });
-
-  // Unplaced cages go in scaffold column visually (with distinct style)
-  const scaffoldAll = [...byZone.scaffold, ...unplaced];
-
-  ['scaffold','spmt','final'].forEach(z => {
-    const col = document.getElementById('col-' + z);
-    const cages = z === 'scaffold' ? scaffoldAll : byZone[z];
-    document.getElementById('col-count-' + z).textContent = z === 'scaffold'
-      ? (byZone.scaffold.length + (unplaced.length ? ` +${unplaced.length}` : ''))
-      : byZone[z].length;
-    if (!cages.length) {
-      col.innerHTML = `<div class="zone-empty"><div class="zone-empty-icon">${ZONES[z].icon}</div><div class="zone-empty-txt">No cages</div></div>`;
-      return;
-    }
-    col.innerHTML = cages.map(c => buildCageCard(c, z)).join('');
-  });
-}
-
-function buildCageCard(cage, colZone) {
-  const zone = parseZone(cage);
-  const zDef = zone ? ZONES[zone] : null;
-  const accent = zDef ? zDef.color : 'var(--text-3)';
-  const badgeCls = zone ? `zbadge-${zone}` : 'zbadge-none';
-  const badgeTxt = zDef ? zDef.label : 'Unplaced';
-  const dimStr = [
-    cage.width  ? cage.width  + 'm W' : null,
-    cage.height ? cage.height + 'm H' : null,
-    cage.length ? cage.length + 'm L' : null,
-  ].filter(Boolean).join(' · ');
-  const wt = cage.weight ? cage.weight + 't' : null;
-  const notesText = cage.notes ? `<div style="font:400 10px var(--mono);color:var(--text-3);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(cage.notes)}">${esc(cage.notes)}</div>` : '';
-
-  const otherZones = ['scaffold','spmt','final'].filter(z => z !== zone);
-  const actionBtns = otherZones.map(z =>
-    `<button class="zone-btn z-${z}" onclick="event.stopPropagation();quickMove('${cage.id}','${z}')" title="Move to ${ZONES[z].label}">${ZONES[z].icon} ${ZONES[z].label}</button>`
-  ).join('');
-
-  return `<div class="cage-card" style="--zone-accent:${accent}" onclick="openModal('${cage.id}')">
-    <div class="cage-top">
-      <div>
-        <div class="cage-name">${esc(cage.name)}</div>
-        <span class="zbadge ${badgeCls}">${badgeTxt}</span>
-      </div>
-    </div>
-    <div class="cage-dims">
-      ${dimStr ? `<div class="dim-tag">${dimStr}</div>` : ''}
-      ${wt ? `<div class="dim-tag" style="color:var(--amber)">${wt}</div>` : ''}
-    </div>
-    ${notesText}
-    <div class="cage-actions">${actionBtns}</div>
-  </div>`;
-}
-
-// ── List ──
-function renderList() {
-  const tbody = document.getElementById('list-body');
-  if (!FILTERED.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-3);font:400 12px var(--mono);">No cages match current filter</td></tr>`;
+  // tbody
+  const tbody = document.getElementById('cage-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="${7 + CUSTOM_FIELDS.length + 1}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cages found'}</td></tr>`;
     return;
   }
-  tbody.innerHTML = FILTERED.map(c => {
-    const zone = parseZone(c);
-    const zDef = zone ? ZONES[zone] : null;
-    const badgeCls = zone ? `zbadge-${zone}` : 'zbadge-none';
-    const badgeTxt = zDef ? zDef.label : 'Unplaced';
-    const dims = [c.width?c.width+'m W':null, c.height?c.height+'m H':null, c.length?c.length+'m L':null].filter(Boolean).join(' × ');
-    const wt = c.weight ? c.weight + 't' : '—';
-    const notes = c.notes ? `<span style="color:var(--text-3)">${esc(c.notes)}</span>` : '<span style="color:var(--text-3)">—</span>';
-    return `<tr>
-      <td><span style="font:700 13px var(--sans)">${esc(c.name)}</span></td>
-      <td style="font:400 12px var(--mono);color:var(--text-2)">${dims || '—'}</td>
-      <td style="font:700 12px var(--mono);color:var(--amber)">${wt}</td>
-      <td><span class="zbadge ${badgeCls}">${badgeTxt}</span></td>
-      <td style="font:400 11px var(--mono)">${notes}</td>
-      <td><button class="btn btn-ghost btn-xs" onclick="openModal('${c.id}')">Move →</button></td>
+
+  tbody.innerHTML = filtered.map(c => {
+    const fd = FACTORY_DATA[c.id] || {};
+    const tags = fd.tags || {};
+    const customFields = fd.custom_fields || {};
+    const activeTags = TAG_DEFS.filter(t => tags[t.key]);
+    const tagDots = activeTags.length
+      ? activeTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
+      : '<span style="color:var(--text-3)">—</span>';
+    const locShort = (c.location || 'facility').replace('shipped','On Site');
+    const customCells = CUSTOM_FIELDS.map(f =>
+      `<td>${esc(customFields[f.key] || '—')}</td>`
+    ).join('');
+    return `<tr onclick="openDetail('${c.id}')">
+      <td><span class="cage-ref-cell">${esc(c.name)}</span></td>
+      <td>${c.width  || '—'}</td>
+      <td>${c.height || '—'}</td>
+      <td>${c.length || '—'}</td>
+      <td>${c.weight || '—'}</td>
+      <td style="color:var(--text-2)">${esc(locShort)}</td>
+      <td>${tagDots}</td>
+      ${customCells}
+      <td></td>
     </tr>`;
   }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// MODAL
+// DETAIL PANEL
 // ═══════════════════════════════════════════════════════════════════════
-function openModal(cageId) {
-  MODAL_CAGE = ALL_CAGES.find(c => c.id === cageId);
-  if (!MODAL_CAGE) return;
-  MODAL_ZONE = parseZone(MODAL_CAGE);
-
-  document.getElementById('modal-cage-name').textContent = MODAL_CAGE.name;
-  const dims = [
-    MODAL_CAGE.width  ? MODAL_CAGE.width + 'm wide' : null,
-    MODAL_CAGE.height ? MODAL_CAGE.height + 'm tall' : null,
-    MODAL_CAGE.weight ? MODAL_CAGE.weight + 't'      : null,
-  ].filter(Boolean).join(' · ');
-  document.getElementById('modal-cage-dims').textContent = dims || 'Cage details';
-  document.getElementById('modal-notes').value = '';
-
-  // Highlight current zone
-  ['scaffold','spmt','final'].forEach(z => {
-    const btn = document.getElementById('zsb-' + z);
-    btn.className = 'zone-select-btn' + (MODAL_ZONE === z ? ' sel-' + z : '');
-  });
-
-  document.getElementById('move-modal').classList.remove('hidden');
-}
-
-function closeModal() {
-  document.getElementById('move-modal').classList.add('hidden');
-  MODAL_CAGE = null;
-  MODAL_ZONE = null;
-}
-
-function selectZone(z) {
-  MODAL_ZONE = z;
-  ['scaffold','spmt','final'].forEach(zone => {
-    const btn = document.getElementById('zsb-' + zone);
-    btn.className = 'zone-select-btn' + (zone === z ? ' sel-' + z : '');
-  });
-}
-
-async function confirmMove() {
-  if (!MODAL_CAGE || !MODAL_ZONE) {
-    toast('Select a zone first.', 'error'); return;
-  }
-  const notes = document.getElementById('modal-notes').value.trim();
-  await moveCage(MODAL_CAGE.id, MODAL_ZONE, notes);
-  closeModal();
-}
-
-// ═══════════════════════════════════════════════════════════════════════
-// MOVE LOGIC
-// ═══════════════════════════════════════════════════════════════════════
-async function quickMove(cageId, zone) {
-  await moveCage(cageId, zone, '');
-}
-
-async function moveCage(cageId, zone, notes) {
+function openDetail(cageId) {
   const cage = ALL_CAGES.find(c => c.id === cageId);
   if (!cage) return;
-  const prevZone = parseZone(cage);
-  if (prevZone === zone) { toast('Cage already in that zone.', 'info'); return; }
 
-  const zDef = ZONES[zone];
-  const locationDetail = zDef.label + (notes ? ' — ' + notes : '');
+  FDP_CAGE_ID = cageId;
+  const fd = FACTORY_DATA[cageId] || {};
+  FDP_DRAFT_TAGS   = { ...(fd.tags || {}) };
+  FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
 
-  // Optimistic update
-  cage.locationDetail = locationDetail;
-  applyFilters();
+  // Edit mode if write PIN already stored
+  FDP_EDIT_MODE = !!WRITE_PIN;
 
-  // Build the updated cage payload matching what the worker expects
-  const payload = {
-    id:                 cage.id,
-    name:               cage.name,
-    height:             cage.height || 0,
-    width:              cage.width  || 0,
-    length:             cage.length || 0,
-    weight:             cage.weight || 0,
-    location:           'shipped',         // stays 'shipped' — still at client site
-    locationDetail:     locationDetail,
-    departureDate:      cage.departure_date || cage.departureDate || null,
-    proposedShipDay:    cage.proposed_ship_day || cage.proposedShipDay || null,
-    proposedTripId:     cage.proposed_trip_id || cage.proposedTripId || null,
-    notes:              cage.notes || null,
-    shippingPreference: cage.shippingPreference ? 1 : 0,
-    shippingPreference2:cage.shippingPreference2 ? 1 : 0,
-    locationHistory:    cage.locationHistory || cage.location_history || [],
-    intoRmd:            cage.intoRmd || cage.into_rmd || null,
-    outOfRmd:           cage.outOfRmd || cage.out_of_rmd || null,
-  };
+  document.getElementById('fdp-name').textContent = cage.name;
+  document.getElementById('fdp-id').textContent   = 'ID: ' + cageId;
+  document.getElementById('fdp-save-btn').style.display = FDP_EDIT_MODE ? '' : 'none';
 
-  try {
-    const res = await fetch(API_BASE + '/api/cages', {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + SESSION_PIN,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const txt = await res.text().catch(() => res.status);
-      throw new Error(txt);
-    }
-
-    // Log the move
-    const entry = {
-      cageId,
-      cageName: cage.name,
-      from: prevZone ? ZONES[prevZone].label : 'Unplaced',
-      to: zDef.label,
-      notes,
-      ts: new Date(),
-      zoneKey: zone,
-    };
-    MOVE_LOG.unshift(entry);
-    const logSlice = MOVE_LOG.slice(0, 100);
-    try { localStorage.setItem(LS_LOG, JSON.stringify(logSlice)); } catch(e) {}
-    // Persist to API (fire-and-forget)
-    fetch(API_BASE + '/api/construction_log', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SESSION_PIN },
-      body: JSON.stringify({ entries: logSlice }),
-    }).catch(() => {});
-    renderLog();
-
-    toast(`${cage.name} → ${zDef.label}`, 'success');
-  } catch(e) {
-    // Revert
-    cage.locationDetail = prevZone ? ZONES[prevZone].label : '';
-    applyFilters();
-    toast('Move failed: ' + e.message, 'error');
-  }
+  renderDetailBody(cage);
+  document.getElementById('detail-overlay').classList.add('open');
 }
 
-// ═══════════════════════════════════════════════════════════════════════
-// LOG
-// ═══════════════════════════════════════════════════════════════════════
-function renderLog() {
-  const body = document.getElementById('log-body');
-  if (!MOVE_LOG.length) {
-    body.innerHTML = '<div class="log-empty">No moves yet</div>';
-    return;
-  }
-  body.innerHTML = MOVE_LOG.map(e => {
-    const z = ZONES[e.zoneKey];
-    const color = z ? z.color : 'var(--text-3)';
-    const timeStr = e.ts.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
-    const dateStr = e.ts.toLocaleDateString([], {day:'2-digit',month:'short'});
-    return `<div class="log-entry">
-      <div class="log-dot" style="background:${color}"></div>
-      <div class="log-info">
-        <div class="log-cage">${esc(e.cageName)}</div>
-        <div class="log-move">${esc(e.from)} → ${esc(e.to)}${e.notes ? ' · ' + esc(e.notes) : ''}</div>
-        <div class="log-time">${dateStr} ${timeStr}</div>
-      </div>
+function renderDetailBody(cage) {
+  cage = cage || ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+  if (!cage) return;
+
+  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
+
+  // Props
+  const props = [
+    { label:'Width',  value: cage.width  ? cage.width  + ' mm' : '—' },
+    { label:'Height', value: cage.height ? cage.height + ' mm' : '—' },
+    { label:'Length', value: cage.length ? cage.length + ' mm' : '—' },
+    { label:'Weight', value: cage.weight ? cage.weight + ' kg' : '—' },
+  ];
+
+  // Tags
+  const tagsHtml = TAG_DEFS.map(t => {
+    const on = FDP_DRAFT_TAGS[t.key] ? ' on' : '';
+    const ro = FDP_EDIT_MODE ? '' : ' readonly';
+    return `<div class="tag-toggle${on}${ro}" id="ftag-${t.key}" ${FDP_EDIT_MODE ? `onclick="toggleFdpTag('${t.key}')"` : ''}>
+      <span class="ftag-dot" style="background:${t.color}"></span>${t.label}
     </div>`;
   }).join('');
+
+  // Custom fields
+  const customHtml = CUSTOM_FIELDS.map(f => `
+    <div class="cf-item">
+      <div class="cf-label">${esc(f.name)}</div>
+      ${FDP_EDIT_MODE
+        ? `<input class="cf-input" type="${f.type}" id="cf-${f.key}"
+            value="${esc(FDP_DRAFT_CUSTOM[f.key] || '')}"
+            placeholder="${f.type === 'number' ? '0' : '—'}"
+            oninput="FDP_DRAFT_CUSTOM['${f.key}']=this.value">`
+        : `<div class="cf-value">${esc(FDP_DRAFT_CUSTOM[f.key] || '—')}</div>`
+      }
+    </div>
+  `).join('');
+
+  // Lock banner (only shown when not in edit mode)
+  const lockBanner = FDP_EDIT_MODE ? '' : `
+    <div class="lock-banner">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-text">
+        <strong>View Only</strong>
+        Scan or enter write PIN to edit this cage's data.
+      </div>
+      <button class="btn btn-amber btn-sm" onclick="openPinModal()">Edit →</button>
+    </div>
+  `;
+
+  document.getElementById('fdp-body').innerHTML = `
+    ${lockBanner}
+    <div class="qr-wrap">
+      <div class="qr-box" id="fdp-qr-box"></div>
+      <div class="qr-link">${esc(qrUrl)}</div>
+    </div>
+    <div class="fdp-props">
+      ${props.map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
+    </div>
+    <div class="fdp-section-label">Tags</div>
+    <div class="tags-editor">${tagsHtml}</div>
+    ${CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
+  `;
+
+  // Render QR
+  const qrBox = document.getElementById('fdp-qr-box');
+  qrBox.innerHTML = '';
+  new QRCode(qrBox, { text: qrUrl, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+
+  // Footer
+  const footer = document.getElementById('fdp-footer');
+  footer.innerHTML = `<button class="btn btn-amber btn-sm" onclick="printQR()">⎙ Print QR</button>`;
+  if (FDP_EDIT_MODE) {
+    footer.innerHTML += `<button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">💾 Save Changes</button>
+      <button class="btn-danger-ghost btn-sm" onclick="lockEditMode()" style="margin-left:auto;">🔒 Lock</button>`;
+  }
+
+  document.getElementById('fdp-save-btn').style.display = FDP_EDIT_MODE ? '' : 'none';
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  FDP_CAGE_ID    = null;
+  FDP_EDIT_MODE  = false;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('detail-overlay')) closeDetail();
+}
+
+function lockEditMode() {
+  FDP_EDIT_MODE = false;
+  const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+  renderDetailBody(cage);
+  toast('Editing locked', 'info');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// VIEW TOGGLE
+// WRITE PIN MODAL
 // ═══════════════════════════════════════════════════════════════════════
-function setView(v) {
-  CURRENT_VIEW = v;
-  document.getElementById('board-view').classList.toggle('hidden', v !== 'board');
-  document.getElementById('list-view').classList.toggle('hidden', v !== 'list');
-  document.getElementById('vt-board').classList.toggle('active', v === 'board');
-  document.getElementById('vt-list').classList.toggle('active', v === 'list');
+function openPinModal() {
+  document.getElementById('write-pin-input').value = '';
+  document.getElementById('write-pin-err').textContent = '';
+  document.getElementById('pin-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('write-pin-input').focus(), 80);
+}
+
+function closePinModal() {
+  document.getElementById('pin-modal-overlay').classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('write-pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmWritePin();
+    if (e.key === 'Escape') closePinModal();
+  });
+  document.getElementById('pin-modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('pin-modal-overlay')) closePinModal();
+  });
+});
+
+async function confirmWritePin() {
+  const pin    = document.getElementById('write-pin-input').value.trim();
+  const errEl  = document.getElementById('write-pin-err');
+  errEl.textContent = '';
+
+  if (!pin) { errEl.textContent = 'Enter a PIN.'; return; }
+
+  try {
+    const res  = await fetch(API_BASE + '/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      errEl.textContent = data.error || 'Incorrect PIN.';
+      return;
+    }
+
+    // Accept any valid PIN as write PIN — the worker will enforce write permissions
+    WRITE_PIN     = pin;
+    FDP_EDIT_MODE = true;
+    localStorage.setItem(LS_WRITE_PIN, pin);
+
+    closePinModal();
+    const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+    renderDetailBody(cage);
+    toast('Edit mode unlocked', 'success');
+  } catch(e) {
+    errEl.textContent = 'Could not reach API.';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAGS & CUSTOM FIELDS — EDIT
+// ═══════════════════════════════════════════════════════════════════════
+function toggleFdpTag(key) {
+  if (!FDP_EDIT_MODE) return;
+  FDP_DRAFT_TAGS[key] = !FDP_DRAFT_TAGS[key];
+  const el = document.getElementById('ftag-' + key);
+  if (el) el.classList.toggle('on', !!FDP_DRAFT_TAGS[key]);
+}
+
+async function saveFdpChanges() {
+  if (!FDP_CAGE_ID || !WRITE_PIN) return;
+  CUSTOM_FIELDS.forEach(f => {
+    const el = document.getElementById('cf-' + f.key);
+    if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
+  });
+  try {
+    const res = await fetch(API_BASE + '/api/factory-data', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM }),
+    });
+    if (!res.ok) throw new Error('Save failed');
+    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM } };
+    renderTable();
+    toast('Cage data saved', 'success');
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRINT QR
+// ═══════════════════════════════════════════════════════════════════════
+function printQR() {
+  if (!FDP_CAGE_ID) return;
+  const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+  if (!cage) return;
+  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
+  document.getElementById('fp-name').textContent = cage.name;
+  document.getElementById('fp-meta').textContent = 'ID: ' + FDP_CAGE_ID;
+  document.getElementById('fp-url').textContent  = qrUrl;
+  const dims = [
+    cage.width  ? 'W: '+cage.width+'mm'  : null,
+    cage.height ? 'H: '+cage.height+'mm' : null,
+    cage.length ? 'L: '+cage.length+'mm' : null,
+    cage.weight ? cage.weight+'kg'        : null,
+  ].filter(Boolean).join('  ·  ');
+  document.getElementById('fp-dims').textContent = dims;
+  const fpQr = document.getElementById('fp-qr');
+  fpQr.innerHTML = '';
+  new QRCode(fpQr, { text: qrUrl, width: 200, height: 200, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
+  document.getElementById('factory-print-area').style.display = 'flex';
+  setTimeout(() => { window.print(); document.getElementById('factory-print-area').style.display = 'none'; }, 300);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CUSTOM FIELD MANAGEMENT
+// ═══════════════════════════════════════════════════════════════════════
+function openAddFieldModal() {
+  if (!WRITE_PIN) { openPinModal(); return; }
+  document.getElementById('new-field-name').value = '';
+  document.getElementById('new-field-type').value = 'text';
+  document.getElementById('field-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('new-field-name').focus(), 80);
+}
+
+function closeAddFieldModal() {
+  document.getElementById('field-modal-overlay').classList.add('hidden');
+}
+
+function handleFieldModalOverlay(e) {
+  if (e.target === document.getElementById('field-modal-overlay')) closeAddFieldModal();
+}
+
+async function confirmAddField() {
+  const name = document.getElementById('new-field-name').value.trim();
+  if (!name) { toast('Field name is required', 'error'); return; }
+  const type = document.getElementById('new-field-type').value;
+  const key  = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
+  CUSTOM_FIELDS.push({ name, type, key });
+  try {
+    await fetch(API_BASE + '/api/factory-settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+      body: JSON.stringify({ customFields: CUSTOM_FIELDS }),
+    });
+    closeAddFieldModal();
+    renderTable();
+    toast('Field added', 'success');
+  } catch(e) {
+    toast('Failed to save field: ' + e.message, 'error');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1201,294 +854,21 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// Close modal on overlay click
-document.getElementById('move-modal').addEventListener('click', function(e){
-  if (e.target === this) closeModal();
-});
-
-
-// ═══════════════════════════════════════════════════════════════════════
-// FACTORY TRACKER — state & logic
-// ═══════════════════════════════════════════════════════════════════════
-let FACTORY_DATA = {};       // cage_id → {tags:{}, custom_fields:{}}
-let FACTORY_CUSTOM_FIELDS = []; // [{name, type, key}]
-let FACTORY_ALL_CAGES = [];  // all cages from /api/state (all locations)
-let FDP_CAGE_ID = null;      // currently open detail panel cage id
-let FDP_DRAFT_TAGS = {};     // tag state being edited
-let FDP_DRAFT_CUSTOM = {};   // custom field values being edited
-
-const FACTORY_TAG_DEFS = [
-  { key:'tag_blue',      label:'Blue',        color:'#3b82f6' },
-  { key:'tag_blue_red',  label:'Blue & Red',  color:'#7c3aed' },
-  { key:'tag_green',     label:'Green',       color:'#22c55e' },
-  { key:'tag_green_red', label:'Green & Red', color:'#16a34a' },
-  { key:'tag_pink',      label:'Pink',        color:'#ec4899' },
-  { key:'tag_yellow',    label:'Yellow',      color:'#eab308' },
-  { key:'tag_white',     label:'White',       color:'#d1d5db' },
-  { key:'tag_purple',    label:'Purple',      color:'#a855f7' },
-  { key:'tag_orange',    label:'Orange',      color:'#f97316' },
-];
-
-// ── Tab switching ─────────────────────────────────────────────────────
-function switchTab(tab) {
-  const isFactory = tab === 'factory';
-  document.getElementById('app').classList.toggle('hidden', isFactory);
-  document.getElementById('factory-app').classList.toggle('hidden', !isFactory);
-  document.getElementById('tab-construction').classList.toggle('active', !isFactory);
-  document.getElementById('tab-factory').classList.toggle('active', isFactory);
-  if (isFactory && FACTORY_ALL_CAGES.length === 0) loadFactoryData();
-}
-
-// ── Load factory data ─────────────────────────────────────────────────
-async function loadFactoryData() {
-  try {
-    const [stateRes, fdRes, fsRes] = await Promise.all([
-      fetch(API_BASE + '/api/state', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
-      fetch(API_BASE + '/api/factory-data', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
-      fetch(API_BASE + '/api/factory-settings', { headers: { Authorization: 'Bearer ' + SESSION_PIN } }),
-    ]);
-    const state = stateRes.ok ? await stateRes.json() : { cages: [] };
-    const fd    = fdRes.ok   ? await fdRes.json()    : { data: {} };
-    const fs    = fsRes.ok   ? await fsRes.json()    : { customFields: [] };
-
-    FACTORY_ALL_CAGES = state.cages || [];
-    FACTORY_DATA = fd.data || {};
-    FACTORY_CUSTOM_FIELDS = fs.customFields || [];
-
-    renderFactoryTable();
-    toast('Factory data loaded', 'success');
-  } catch(e) {
-    toast('Factory load failed: ' + e.message, 'error');
-  }
-}
-
-async function refreshFactoryData() {
-  await loadFactoryData();
-}
-
-// ── Render factory table ──────────────────────────────────────────────
-function renderFactoryTable() {
-  const q = (document.getElementById('factory-search').value || '').toLowerCase();
-  const filtered = FACTORY_ALL_CAGES.filter(c =>
-    !q || (c.name||'').toLowerCase().includes(q)
-  );
-
-  document.getElementById('factory-count').textContent = FACTORY_ALL_CAGES.length;
-
-  // thead
-  const thead = document.getElementById('factory-thead');
-  const customCols = FACTORY_CUSTOM_FIELDS.map(f =>
-    `<th>${esc(f.name)}</th>`
-  ).join('');
-  thead.innerHTML = `<tr>
-    <th>Cage</th><th>W (mm)</th><th>H (mm)</th><th>L (mm)</th><th>Weight (kg)</th><th>Location</th><th>Tags</th>
-    ${customCols}
-    <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
-  </tr>`;
-
-  // tbody
-  const tbody = document.getElementById('factory-tbody');
-  if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="${7 + FACTORY_CUSTOM_FIELDS.length + 1}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cage data loaded'}</td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = filtered.map(c => {
-    const fd = FACTORY_DATA[c.id] || {};
-    const tags = fd.tags || {};
-    const customFields = fd.custom_fields || {};
-    const activeTags = FACTORY_TAG_DEFS.filter(t => tags[t.key]);
-    const tagDots = activeTags.length
-      ? activeTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
-      : '<span style="color:var(--text-3)">—</span>';
-    const locShort = (c.location||'facility').replace('shipped','On Site');
-    const customCells = FACTORY_CUSTOM_FIELDS.map(f =>
-      `<td>${esc(customFields[f.key] || '—')}</td>`
-    ).join('');
-    return `<tr onclick="openFactoryDetail('${c.id}')">
-      <td><span class="cage-ref-cell">${esc(c.name)}</span></td>
-      <td>${c.width || '—'}</td>
-      <td>${c.height || '—'}</td>
-      <td>${c.length || '—'}</td>
-      <td>${c.weight || '—'}</td>
-      <td style="color:var(--text-2)">${esc(locShort)}</td>
-      <td>${tagDots}</td>
-      ${customCells}
-      <td></td>
-    </tr>`;
-  }).join('');
-}
-
-// ── Detail panel ──────────────────────────────────────────────────────
-function openFactoryDetail(cageId) {
-  const cage = FACTORY_ALL_CAGES.find(c => c.id === cageId);
-  if (!cage) return;
-  FDP_CAGE_ID = cageId;
-
-  const fd = FACTORY_DATA[cageId] || {};
-  FDP_DRAFT_TAGS = { ...(fd.tags || {}) };
-  FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
-
-  document.getElementById('fdp-name').textContent = cage.name;
-  document.getElementById('fdp-id').textContent = 'ID: ' + cageId;
-
-  const qrUrl = API_BASE + '/cage/' + cageId;
-
-  // Props
-  const props = [
-    { label:'Width',  value: cage.width  ? cage.width  + ' mm' : '—' },
-    { label:'Height', value: cage.height ? cage.height + ' mm' : '—' },
-    { label:'Length', value: cage.length ? cage.length + ' mm' : '—' },
-    { label:'Weight', value: cage.weight ? cage.weight + ' kg' : '—' },
-  ];
-
-  // Tags HTML
-  const tagsHtml = FACTORY_TAG_DEFS.map(t => {
-    const on = FDP_DRAFT_TAGS[t.key] ? ' on' : '';
-    return `<div class="tag-toggle${on}" id="ftag-${t.key}" onclick="toggleFdpTag('${t.key}')">
-      <span class="ftag-dot" style="background:${t.color}"></span>${t.label}
-    </div>`;
-  }).join('');
-
-  // Custom fields HTML
-  const customHtml = FACTORY_CUSTOM_FIELDS.map(f => `
-    <div class="cf-item">
-      <div class="cf-label">${esc(f.name)}</div>
-      <input class="cf-input" type="${f.type}" id="cf-${f.key}"
-        value="${esc(FDP_DRAFT_CUSTOM[f.key] || '')}"
-        placeholder="${f.type === 'number' ? '0' : '—'}"
-        oninput="FDP_DRAFT_CUSTOM['${f.key}']=this.value">
-    </div>
-  `).join('');
-
-  document.getElementById('fdp-body').innerHTML = `
-    <div class="qr-wrap">
-      <div class="qr-box" id="fdp-qr-box"></div>
-      <div class="qr-link">${esc(qrUrl)}</div>
-    </div>
-    <div class="fdp-props">
-      ${props.map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
-    </div>
-    <div class="fdp-section-label">Tags</div>
-    <div class="tags-editor">${tagsHtml}</div>
-    ${FACTORY_CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
-  `;
-
-  // Generate QR
-  const qrBox = document.getElementById('fdp-qr-box');
-  qrBox.innerHTML = '';
-  new QRCode(qrBox, { text: qrUrl, width: 160, height: 160, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-
-  document.getElementById('factory-detail-overlay').classList.add('open');
-}
-
-function closeFactoryDetail() {
-  document.getElementById('factory-detail-overlay').classList.remove('open');
-  FDP_CAGE_ID = null;
-}
-
-function handleFdpOverlayClick(e) {
-  if (e.target === document.getElementById('factory-detail-overlay')) closeFactoryDetail();
-}
-
-function toggleFdpTag(key) {
-  FDP_DRAFT_TAGS[key] = !FDP_DRAFT_TAGS[key];
-  const el = document.getElementById('ftag-' + key);
-  if (el) el.classList.toggle('on', !!FDP_DRAFT_TAGS[key]);
-}
-
-async function saveFdpChanges() {
-  if (!FDP_CAGE_ID) return;
-  // Collect latest custom field values from inputs
-  FACTORY_CUSTOM_FIELDS.forEach(f => {
-    const el = document.getElementById('cf-' + f.key);
-    if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
-  });
-  try {
-    const res = await fetch(API_BASE + '/api/factory-data', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SESSION_PIN },
-      body: JSON.stringify({ cage_id: FDP_CAGE_ID, tags: FDP_DRAFT_TAGS, custom_fields: FDP_DRAFT_CUSTOM }),
-    });
-    if (!res.ok) throw new Error('Save failed');
-    FACTORY_DATA[FDP_CAGE_ID] = { tags: { ...FDP_DRAFT_TAGS }, custom_fields: { ...FDP_DRAFT_CUSTOM } };
-    renderFactoryTable();
-    toast('Factory data saved', 'success');
-  } catch(e) {
-    toast('Save failed: ' + e.message, 'error');
-  }
-}
-
-// ── Print QR ─────────────────────────────────────────────────────────
-function printFactoryQR() {
-  if (!FDP_CAGE_ID) return;
-  const cage = FACTORY_ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
-  if (!cage) return;
-
-  const qrUrl = API_BASE + '/cage/' + FDP_CAGE_ID;
-  document.getElementById('fp-name').textContent = cage.name;
-  document.getElementById('fp-meta').textContent = 'ID: ' + FDP_CAGE_ID;
-  document.getElementById('fp-url').textContent = qrUrl;
-  const dims = [
-    cage.width  ? 'W: '+cage.width+'mm'  : null,
-    cage.height ? 'H: '+cage.height+'mm' : null,
-    cage.length ? 'L: '+cage.length+'mm' : null,
-    cage.weight ? cage.weight+'kg'        : null,
-  ].filter(Boolean).join('  ·  ');
-  document.getElementById('fp-dims').textContent = dims;
-
-  const fpQr = document.getElementById('fp-qr');
-  fpQr.innerHTML = '';
-  new QRCode(fpQr, { text: qrUrl, width: 200, height: 200, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-  document.getElementById('factory-print-area').style.display = 'flex';
-  setTimeout(() => { window.print(); document.getElementById('factory-print-area').style.display = 'none'; }, 300);
-}
-
-// ── Custom fields ─────────────────────────────────────────────────────
-function openAddFieldModal() {
-  document.getElementById('new-field-name').value = '';
-  document.getElementById('new-field-type').value = 'text';
-  document.getElementById('field-modal-overlay').classList.remove('hidden');
-  setTimeout(() => document.getElementById('new-field-name').focus(), 80);
-}
-
-function closeAddFieldModal() {
-  document.getElementById('field-modal-overlay').classList.add('hidden');
-}
-
-function handleFieldModalOverlay(e) {
-  if (e.target === document.getElementById('field-modal-overlay')) closeAddFieldModal();
-}
-
-async function confirmAddField() {
-  const name = document.getElementById('new-field-name').value.trim();
-  if (!name) { toast('Field name is required', 'error'); return; }
-  const type = document.getElementById('new-field-type').value;
-  const key  = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now();
-  FACTORY_CUSTOM_FIELDS.push({ name, type, key });
-  try {
-    await fetch(API_BASE + '/api/factory-settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + SESSION_PIN },
-      body: JSON.stringify({ customFields: FACTORY_CUSTOM_FIELDS }),
-    });
-    closeAddFieldModal();
-    renderFactoryTable();
-    toast('Field added', 'success');
-  } catch(e) {
-    toast('Failed to save field: ' + e.message, 'error');
-  }
-}
-
-// Deep link support: #factory/cageId
+// Deep link: #cage/cageId — auto-open detail panel (useful when QR is scanned)
 (function checkDeepLink() {
   const hash = window.location.hash;
-  if (hash && hash.startsWith('#factory/')) {
-    const id = hash.slice(9);
-    window.addEventListener('factory-ready', () => openFactoryDetail(id), { once: true });
+  if (hash && hash.startsWith('#cage/')) {
+    const id = hash.slice(6);
+    // Wait until data is loaded then open
+    const tryOpen = setInterval(() => {
+      if (ALL_CAGES.length > 0) {
+        clearInterval(tryOpen);
+        openDetail(id);
+      }
+    }, 200);
+    setTimeout(() => clearInterval(tryOpen), 10000);
   }
 })();
-
 </script>
 </body>
 </html>
