@@ -78,6 +78,37 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 }
 .logout-btn:hover{border-color:#f87171;color:#f87171;background:rgba(248,113,113,.08);}
 
+/* ── Name Chip ── */
+.name-chip{
+  background:var(--surface-3);border:1px solid var(--line);
+  border-radius:7px;padding:5px 11px;
+  color:var(--text-2);font:600 11px var(--sans);cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:all .12s;
+  white-space:nowrap;flex-shrink:0;max-width:160px;
+}
+.name-chip:hover{border-color:var(--amber);color:var(--text-1);}
+.name-chip-avatar{
+  width:18px;height:18px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--amber),#c08520);
+  display:flex;align-items:center;justify-content:center;
+  font:700 9px var(--mono);color:#1a1200;
+}
+.name-chip-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.name-chip-edit{font-size:10px;color:var(--text-3);flex-shrink:0;}
+
+/* ── Edit Name Modal ── */
+.edit-name-modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;
+  display:flex;align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(4px);
+}
+.edit-name-modal-overlay.hidden{display:none;}
+.edit-name-modal{
+  background:var(--surface-2);border:1px solid var(--line-mid);
+  border-radius:var(--radius-lg);padding:28px 30px;width:100%;max-width:360px;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+}
+
 /* ── Auth Screen ── */
 .auth-screen{
   position:fixed;inset:0;z-index:200;
@@ -470,6 +501,11 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   </div>
   <div class="header-pill" id="cage-count-pill">—</div>
   <div class="api-indicator" id="api-dot" title="API status"></div>
+  <div class="name-chip hidden" id="name-chip" onclick="openEditNameModal()" title="Edit your name">
+    <div class="name-chip-avatar" id="name-chip-avatar">?</div>
+    <span class="name-chip-label" id="name-chip-label">—</span>
+    <span class="name-chip-edit">✎</span>
+  </div>
   <button class="logout-btn hidden" id="logout-btn" onclick="doLogout()" title="Log out">&#x23FB; Log out</button>
 </div>
 
@@ -649,6 +685,26 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   </div>
 </div>
 
+<!-- ── Edit Name Modal ── -->
+<div class="edit-name-modal-overlay hidden" id="edit-name-modal-overlay" onclick="handleEditNameOverlay(event)">
+  <div class="edit-name-modal">
+    <div class="modal-title" style="margin-bottom:4px">✎ Edit Your Name</div>
+    <div class="modal-sub">Used in the tag edit history</div>
+    <div class="modal-field">
+      <label class="modal-label">First Name</label>
+      <input class="modal-input" type="text" id="edit-first-name" maxlength="30" placeholder="First name" autocomplete="given-name">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Last Name</label>
+      <input class="modal-input" type="text" id="edit-last-name" maxlength="30" placeholder="Last name" autocomplete="family-name">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEditNameModal()">Cancel</button>
+      <button class="btn btn-amber" onclick="confirmEditName()">Save Name</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast container ── -->
 <div class="toast-wrap" id="toast-wrap"></div>
 
@@ -712,6 +768,54 @@ function locLabel(cage) {
   if (loc === 'frame')    return 'Frame ' + det;
   if (loc === 'shipped' || loc === 'sea') return 'Shipped';
   return det || loc;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAME CHIP
+// ═══════════════════════════════════════════════════════════════════════
+function updateNameChip() {
+  const chip   = document.getElementById('name-chip');
+  const label  = document.getElementById('name-chip-label');
+  const avatar = document.getElementById('name-chip-avatar');
+  if (!TAGGER_NAME) { chip.classList.add('hidden'); return; }
+  chip.classList.remove('hidden');
+  label.textContent = TAGGER_NAME;
+  // Initials: first letter of first word + first letter of last word
+  const parts = TAGGER_NAME.trim().split(/\s+/);
+  const initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+    : parts[0].slice(0,2).toUpperCase();
+  avatar.textContent = initials;
+}
+
+function openEditNameModal() {
+  const parts = TAGGER_NAME.trim().split(/\s+/);
+  document.getElementById('edit-first-name').value = parts[0] || '';
+  document.getElementById('edit-last-name').value  = parts.slice(1).join(' ') || '';
+  document.getElementById('edit-name-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('edit-first-name').focus(), 80);
+}
+
+function closeEditNameModal() {
+  document.getElementById('edit-name-modal-overlay').classList.add('hidden');
+}
+
+function handleEditNameOverlay(e) {
+  if (e.target === document.getElementById('edit-name-modal-overlay')) closeEditNameModal();
+}
+
+function confirmEditName() {
+  const first = document.getElementById('edit-first-name').value.trim();
+  const last  = document.getElementById('edit-last-name').value.trim();
+  if (!first || !last) { toast('Both first and last name are required.', 'error'); return; }
+  TAGGER_NAME = first + ' ' + last;
+  localStorage.setItem('cc_tagger_name', TAGGER_NAME);
+  updateNameChip();
+  // Also keep write PIN modal name in sync
+  const nameEl = document.getElementById('write-name-input');
+  if (nameEl) nameEl.value = TAGGER_NAME;
+  closeEditNameModal();
+  toast('Name updated ✓', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -810,6 +914,7 @@ async function _enterApp() {
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('api-dot').classList.add('ok');
   document.getElementById('logout-btn').classList.remove('hidden');
+  updateNameChip();
 
   await loadData();
   _maybeOpenQRCage();
@@ -828,6 +933,7 @@ function doLogout() {
   localStorage.removeItem(LS_WRITE_PIN);
   localStorage.removeItem('cc_tagger_name');
   document.getElementById('logout-btn').classList.add('hidden');
+  document.getElementById('name-chip').classList.add('hidden');
   document.getElementById('app').classList.add('hidden');
   document.getElementById('auth-screen').style.display = '';
   // Reset auth steps
@@ -1265,6 +1371,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   document.getElementById('pin-modal-overlay').addEventListener('click', e => {
     if (e.target === document.getElementById('pin-modal-overlay')) closePinModal();
+  });
+  document.getElementById('edit-first-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('edit-last-name').focus();
+    if (e.key === 'Escape') closeEditNameModal();
+  });
+  document.getElementById('edit-last-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter') confirmEditName();
+    if (e.key === 'Escape') closeEditNameModal();
   });
 });
 
@@ -1853,6 +1967,7 @@ function esc(s) {
             document.getElementById('app').classList.remove('hidden');
             document.getElementById('api-dot').classList.add('ok');
             document.getElementById('logout-btn').classList.remove('hidden');
+            updateNameChip();
             await loadData();
             openDetail(cageId, window._qrMeshId || null);
             window._qrMeshId = null;
