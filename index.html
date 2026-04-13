@@ -751,13 +751,13 @@ const FACE_LABELS = { N_FACE: 'N Face', F_FACE: 'F Face' };
 const MESH_TAG_OPTS = [
   { value: 'none',     label: '—',          color: '#555e73',  bg: 'transparent' },
   { value: 'blue',     label: 'Blue',        color: '#3b82f6',  bg: 'rgba(59,130,246,0.12)' },
-  { value: 'blue_red', label: 'Blue & Red',  color: '#7c3aed',  bg: 'rgba(124,58,237,0.12)' },
+  { value: 'blue_red', label: 'Blue & Red',  color: '#3b82f6',  color2: '#ef4444', bg: 'rgba(59,130,246,0.10)' },
 ];
 
 // Legacy cage-level tags (non-blue/non-blue_red ones remain on the cage)
 const CAGE_TAG_DEFS = [
   { key:'tag_green',     label:'Green',       color:'#22c55e' },
-  { key:'tag_green_red', label:'Green & Red', color:'#16a34a' },
+  { key:'tag_green_red', label:'Green & Red', color:'#22c55e', color2:'#ef4444' },
   { key:'tag_pink',      label:'Pink',        color:'#ec4899' },
   { key:'tag_yellow',    label:'Yellow',      color:'#eab308' },
   { key:'tag_white',     label:'White',       color:'#d1d5db' },
@@ -765,6 +765,12 @@ const CAGE_TAG_DEFS = [
   { key:'tag_orange',    label:'Orange',      color:'#f97316' },
 ];
 
+
+// Helper: returns a CSS background value for a tag dot (solid or split half-half)
+function tagDotBg(color, color2) {
+  if (!color2) return color;
+  return `conic-gradient(${color} 0deg 180deg, ${color2} 180deg 360deg)`;
+}
 // Helper: produce location label matching goods-out app
 function locLabel(cage) {
   const loc = cage.location || 'facility';
@@ -1032,7 +1038,7 @@ function renderTable() {
     // Cage-level tags (non-blue)
     const activeCageTags = CAGE_TAG_DEFS.filter(t => cageTags[t.key]);
     const cageTagDots = activeCageTags.length
-      ? activeCageTags.map(t => `<span class="ftag-dot" style="background:${t.color}" title="${t.label}"></span>`).join('')
+      ? activeCageTags.map(t => `<span class="ftag-dot" style="background:${tagDotBg(t.color,t.color2)}" title="${t.label}"></span>`).join('')
       : '<span style="color:var(--text-3)">—</span>';
 
     // Mesh summary dots
@@ -1040,10 +1046,11 @@ function renderTable() {
     const meshDots = allMeshes.map(m => {
       const state = meshData[m] || (REQUIRED_MESHES.includes(m) ? 'none' : null);
       if (!state) return '';
-      const color = state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : '#555e73';
+      const color = state === 'blue' ? '#3b82f6' : '#555e73';
+      const color2 = state === 'blue_red' ? '#ef4444' : null;
       return `<span title="${m}: ${state === 'none' ? 'no tag' : state === 'blue' ? 'Blue' : 'Blue & Red'}"
         style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:18px;border-radius:3px;
-        background:${color}18;border:1px solid ${color}55;font:700 9px var(--mono);color:${color};margin-right:2px">${m}</span>`;
+        background:${color2 ? tagDotBg(color,color2) : color+'18'};border:1px solid ${color}55;font:700 9px var(--mono);color:${color2 ? '#fff' : color};margin-right:2px">${m}</span>`;
     }).join('');
 
     const dimCells = canSeeDetails
@@ -1173,7 +1180,7 @@ function renderDetailBody(cage) {
             ${scannedBadge}${optBadge}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
+            <span style="font:600 11px var(--mono);color:${opt.value==='blue_red'?'#fff':opt.color};background:${opt.value==='blue_red'?'linear-gradient(90deg,#3b82f6 50%,#ef4444 50%)':opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
             ${printBtn}
           </div>
         </div>
@@ -1186,7 +1193,7 @@ function renderDetailBody(cage) {
       const active = current === o.value;
       return `<button onclick="setMeshTag('${m}','${o.value}')"
         style="flex:1;padding:5px 4px;border-radius:5px;border:1px solid ${active ? o.color : 'var(--line)'};
-        background:${active ? o.bg : 'var(--surface-3)'};color:${active ? o.color : 'var(--text-3)'};
+        background:${active ? (o.value==='blue_red' ? 'linear-gradient(90deg,#3b82f6 50%,#ef4444 50%)' : o.bg) : 'var(--surface-3)'};color:${active ? (o.value==='blue_red' ? '#fff' : o.color) : 'var(--text-3)'};
         font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
     }).join('');
     return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
@@ -1228,7 +1235,7 @@ function renderDetailBody(cage) {
       return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
         <div style="display:flex;align-items:center;justify-content:space-between;">
           <span style="font:700 13px var(--mono);color:var(--text-1)">${label}</span>
-          <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
+          <span style="font:600 11px var(--mono);color:${opt.value==='blue_red'?'#fff':opt.color};background:${opt.value==='blue_red'?'linear-gradient(90deg,#3b82f6 50%,#ef4444 50%)':opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
         </div>
         ${commentHtml}
       </div>`;
@@ -1237,7 +1244,7 @@ function renderDetailBody(cage) {
       const active = current === o.value;
       return `<button onclick="setFaceTag('${f}','${o.value}')"
         style="flex:1;padding:5px 4px;border-radius:5px;border:1px solid ${active ? o.color : 'var(--line)'};
-        background:${active ? o.bg : 'var(--surface-3)'};color:${active ? o.color : 'var(--text-3)'};
+        background:${active ? (o.value==='blue_red' ? 'linear-gradient(90deg,#3b82f6 50%,#ef4444 50%)' : o.bg) : 'var(--surface-3)'};color:${active ? (o.value==='blue_red' ? '#fff' : o.color) : 'var(--text-3)'};
         font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
     }).join('');
     return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
@@ -1261,7 +1268,7 @@ function renderDetailBody(cage) {
     const on = FDP_DRAFT_TAGS[t.key] ? ' on' : '';
     const ro = FDP_EDIT_MODE ? '' : ' readonly';
     return `<div class="tag-toggle${on}${ro}" id="ftag-${t.key}" ${FDP_EDIT_MODE ? `onclick="toggleFdpTag('${t.key}')"` : ''}>
-      <span class="ftag-dot" style="background:${t.color}"></span>${t.label}
+      <span class="ftag-dot" style="background:${tagDotBg(t.color,t.color2)}"></span>${t.label}
     </div>`;
   }).join('');
 
@@ -1303,13 +1310,14 @@ function renderDetailBody(cage) {
         : '—';
       let changeDesc = '';
       if (e.kind === 'cage_tag') {
-        const dot = `<span class="ftag-dot" style="background:${CAGE_TAG_DEFS.find(t=>t.key===e.tag)?.color||'#888'}"></span>`;
+        const _tagDef = CAGE_TAG_DEFS.find(t=>t.key===e.tag);
+        const dot = `<span class="ftag-dot" style="background:${tagDotBg(_tagDef?.color||'#888',_tagDef?.color2)}"></span>`;
         changeDesc = `${dot}<strong>${esc(e.tag_label)}</strong> tag → <span style="color:${e.to==='on'?'#22c55e':'#f87171'}">${e.to==='on'?'Applied':'Removed'}</span>`;
       } else if (e.kind === 'mesh_tag') {
-        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#7c3aed' : '#555e73';
+        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#3b82f6' : '#555e73';
         changeDesc = `<strong>${esc(e.mesh)}</strong> mesh → <span style="color:${toColor}">${esc(e.to_label)}</span>`;
       } else if (e.kind === 'face_tag') {
-        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#7c3aed' : '#555e73';
+        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#3b82f6' : '#555e73';
         const fLabel  = FACE_LABELS[e.mesh] || e.mesh;
         changeDesc = `<strong>${esc(fLabel)}</strong> → <span style="color:${toColor}">${esc(e.to_label)}</span>`;
       } else {
