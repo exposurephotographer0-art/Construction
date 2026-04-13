@@ -1159,12 +1159,7 @@ function renderDetailBody(cage) {
       : '';
 
     // Print button always visible
-    const printBtn = `<button onclick="event.stopPropagation();printSingleMeshQR('${m}')"
-      title="Print QR for ${m}"
-      style="background:none;border:1px solid var(--line);border-radius:5px;padding:3px 8px;
-      color:var(--text-3);font:600 10px var(--mono);cursor:pointer;transition:all .12s;flex-shrink:0"
-      onmouseover="this.style.borderColor='var(--amber)';this.style.color='var(--amber)'"
-      onmouseout="this.style.borderColor='var(--line)';this.style.color='var(--text-3)'">⎙</button>`;
+    const printBtn = '';
 
     if (!FDP_EDIT_MODE) {
       const commentHtml = comment
@@ -1353,10 +1348,9 @@ function renderDetailBody(cage) {
 
   // Footer
   const footer = document.getElementById('fdp-footer');
-  footer.innerHTML = `<button class="btn btn-amber btn-sm" onclick="printQR()">⎙ Cage QR</button>
-    <button class="btn btn-ghost btn-sm" onclick="printMeshQRs()">⎙ All Mesh QRs</button>`;
+  footer.innerHTML = '';
   if (FDP_EDIT_MODE) {
-    footer.innerHTML += `<button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">💾 Save</button>
+    footer.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="saveFdpChanges()">💾 Save</button>
       <button class="btn-danger-ghost btn-sm" onclick="lockEditMode()" style="margin-left:auto;">🔒 Lock</button>`;
   }
 
