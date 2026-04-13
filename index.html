@@ -733,6 +733,8 @@ let FDP_DRAFT_TAGS   = {};
 let FDP_DRAFT_CUSTOM = {};
 let FDP_DRAFT_MESHES        = {}; // mesh name → 'none'|'blue'|'blue_red'
 let FDP_DRAFT_MESH_COMMENTS = {}; // mesh name → string comment
+let FDP_DRAFT_FACES         = {}; // face name → 'none'|'blue'|'blue_red'
+let FDP_DRAFT_FACE_COMMENTS = {}; // face name → string comment
 let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
 // Meshes — every cage has N1A and F1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
@@ -740,6 +742,10 @@ let FDP_EDIT_MODE           = false; // whether write PIN is active for this pan
 const MESH_NAMES = ['N1A','F1A','N3A','N5A','N7A','F3A','F5A','F7A'];
 const REQUIRED_MESHES = ['N1A','F1A'];
 const OPTIONAL_MESHES = ['N3A','N5A','N7A','F3A','F5A','F7A'];
+
+// Face properties — N Face and F Face — tag only (no QR code), blue or blue+red
+const FACE_NAMES = ['N_FACE','F_FACE'];
+const FACE_LABELS = { N_FACE: 'N Face', F_FACE: 'F Face' };
 
 // Mesh tag states stored as: meshes: { N1A: 'none'|'blue'|'blue_red', F1A: ... }
 const MESH_TAG_OPTS = [
@@ -1075,6 +1081,8 @@ function openDetail(cageId, scannedMesh) {
   FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
   FDP_DRAFT_MESHES        = { ...(fd.meshes || {}) };
   FDP_DRAFT_MESH_COMMENTS = { ...(fd.mesh_comments || {}) };
+  FDP_DRAFT_FACES         = { ...(fd.faces || {}) };
+  FDP_DRAFT_FACE_COMMENTS = { ...(fd.face_comments || {}) };
   // tag_history is read directly from FACTORY_DATA — not drafted (append-only)
 
   // Edit mode if write PIN already stored or initial auth was write level
@@ -1175,10 +1183,6 @@ function renderDetailBody(cage) {
           </div>
         </div>
         ${commentHtml}
-        <div style="display:flex;align-items:flex-end;gap:10px;margin-top:10px">
-          <div style="background:#fff;padding:6px;border-radius:4px;line-height:0;flex-shrink:0" id="mesh-qr-inline-${m}"></div>
-          <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.5">${esc(meshQrUrl)}</div>
-        </div>
       </div>`;
     }
 
@@ -1209,9 +1213,50 @@ function renderDetailBody(cage) {
           onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
           oninput="FDP_DRAFT_MESH_COMMENTS['${m}']=this.value">${esc(comment)}</textarea>
       </div>
-      <div style="display:flex;align-items:flex-end;gap:8px">
-        <div style="background:#fff;padding:5px;border-radius:3px;line-height:0;flex-shrink:0" id="mesh-qr-inline-${m}"></div>
-        <div style="font:400 9px var(--mono);color:var(--text-3);word-break:break-all;line-height:1.5">${esc(meshQrUrl)}</div>
+    </div>`;
+  }).join('');
+
+  // Face section — N Face and F Face (no QR, tag + comment only)
+  const faceHtml = FACE_NAMES.map(f => {
+    const label   = FACE_LABELS[f];
+    const current = FDP_DRAFT_FACES[f] || 'none';
+    const comment = FDP_DRAFT_FACE_COMMENTS[f] || '';
+    const opt     = MESH_TAG_OPTS.find(o => o.value === current) || MESH_TAG_OPTS[0];
+    const border  = '1px solid var(--line)';
+    const bg      = 'var(--surface-2)';
+
+    if (!FDP_EDIT_MODE) {
+      const commentHtml = comment
+        ? `<div style="margin-top:8px;padding:8px 10px;background:var(--surface-3);border-radius:5px;
+            border-left:3px solid #3b82f6;font:400 11px var(--mono);color:var(--text-2);line-height:1.5">${esc(comment)}</div>`
+        : '';
+      return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <span style="font:700 13px var(--mono);color:var(--text-1)">${label}</span>
+          <span style="font:600 11px var(--mono);color:${opt.color};background:${opt.bg};padding:3px 10px;border-radius:4px;border:1px solid ${opt.color}44">${opt.label === '—' ? 'No tag' : opt.label}</span>
+        </div>
+        ${commentHtml}
+      </div>`;
+    }
+    const btns = MESH_TAG_OPTS.map(o => {
+      const active = current === o.value;
+      return `<button onclick="setFaceTag('${f}','${o.value}')"
+        style="flex:1;padding:5px 4px;border-radius:5px;border:1px solid ${active ? o.color : 'var(--line)'};
+        background:${active ? o.bg : 'var(--surface-3)'};color:${active ? o.color : 'var(--text-3)'};
+        font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
+    }).join('');
+    return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
+      <div style="font:700 13px var(--mono);color:var(--text-1);margin-bottom:8px">${label}</div>
+      <div style="display:flex;gap:5px;margin-bottom:8px">${btns}</div>
+      <div>
+        <div style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Comment</div>
+        <textarea id="face-comment-${f}"
+          style="background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:7px 9px;
+          color:var(--text-1);font:400 11px var(--mono);width:100%;resize:vertical;min-height:54px;
+          transition:border-color .15s;line-height:1.5"
+          placeholder="Notes about this face…"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+          oninput="FDP_DRAFT_FACE_COMMENTS['${f}']=this.value">${esc(comment)}</textarea>
       </div>
     </div>`;
   }).join('');
@@ -1268,6 +1313,10 @@ function renderDetailBody(cage) {
       } else if (e.kind === 'mesh_tag') {
         const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#7c3aed' : '#555e73';
         changeDesc = `<strong>${esc(e.mesh)}</strong> mesh → <span style="color:${toColor}">${esc(e.to_label)}</span>`;
+      } else if (e.kind === 'face_tag') {
+        const toColor = e.to === 'blue' ? '#3b82f6' : e.to === 'blue_red' ? '#7c3aed' : '#555e73';
+        const fLabel  = FACE_LABELS[e.mesh] || e.mesh;
+        changeDesc = `<strong>${esc(fLabel)}</strong> → <span style="color:${toColor}">${esc(e.to_label)}</span>`;
       } else {
         changeDesc = esc(e.tag || e.mesh || '?');
       }
@@ -1290,33 +1339,17 @@ function renderDetailBody(cage) {
   document.getElementById('fdp-body').innerHTML = `
     ${meshBanner}
     ${lockBanner}
-    <div class="qr-wrap">
-      <div class="qr-box" id="fdp-qr-box"></div>
-      <div class="qr-link">${esc(cageQrUrl)}</div>
-      <div style="font:400 9px var(--mono);color:var(--text-3)">Cage QR — scans open this cage</div>
-    </div>
     ${propsHtml}
     ${locationHtml}
-    <div class="fdp-section-label">Meshes <span style="font:400 10px var(--mono);color:var(--text-3);text-transform:none;letter-spacing:0">— each has its own QR code</span></div>
+    <div class="fdp-section-label">Meshes <span style="font:400 10px var(--mono);color:var(--text-3);text-transform:none;letter-spacing:0">— use ⎙ to print QR labels</span></div>
     <div style="margin-bottom:14px">${meshHtml || '<span style="color:var(--text-3);font:400 12px var(--mono)">No mesh data</span>'}</div>
+    <div class="fdp-section-label">Face Properties</div>
+    <div style="margin-bottom:14px">${faceHtml}</div>
     <div class="fdp-section-label">Cage Tags</div>
     <div class="tags-editor">${cageTagsHtml}</div>
     ${CUSTOM_FIELDS.length ? `<div class="fdp-section-label">Custom Fields</div><div class="custom-fields-grid">${customHtml}</div>` : ''}
     ${tagHistoryHtml}
   `;
-
-  // Render cage QR
-  const qrBox = document.getElementById('fdp-qr-box');
-  qrBox.innerHTML = '';
-  new QRCode(qrBox, { text: cageQrUrl, width: 140, height: 140, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-
-  // Render per-mesh inline QRs
-  meshesToShow.forEach(m => {
-    const el = document.getElementById('mesh-qr-inline-' + m);
-    if (!el) return;
-    const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
-    new QRCode(el, { text: meshQrUrl, width: 64, height: 64, colorDark: '#000', colorLight: '#fff', correctLevel: QRCode.CorrectLevel.M });
-  });
 
   // Footer
   const footer = document.getElementById('fdp-footer');
@@ -1432,6 +1465,12 @@ function setMeshTag(mesh, value) {
   renderDetailBody();
 }
 
+function setFaceTag(face, value) {
+  if (!FDP_EDIT_MODE) return;
+  FDP_DRAFT_FACES[face] = value;
+  renderDetailBody();
+}
+
 function toggleFdpTag(key) {
   if (!FDP_EDIT_MODE) return;
   FDP_DRAFT_TAGS[key] = !FDP_DRAFT_TAGS[key];
@@ -1462,6 +1501,11 @@ async function saveFdpChanges() {
   MESH_NAMES.forEach(m => {
     const el = document.getElementById('mesh-comment-' + m);
     if (el) FDP_DRAFT_MESH_COMMENTS[m] = el.value;
+  });
+  // Collect face comment values from textareas
+  FACE_NAMES.forEach(f => {
+    const el = document.getElementById('face-comment-' + f);
+    if (el) FDP_DRAFT_FACE_COMMENTS[f] = el.value;
   });
 
   // Build tag history entries by diffing old vs. new
@@ -1508,6 +1552,26 @@ async function saveFdpChanges() {
     }
   }
 
+  // Diff face tags
+  const oldFaces = oldFd.faces || {};
+  for (const f of FACE_NAMES) {
+    const oldVal = oldFaces[f] || 'none';
+    const newVal = FDP_DRAFT_FACES[f] || 'none';
+    if (oldVal !== newVal) {
+      const labelFor = v => MESH_TAG_OPTS.find(o => o.value === v)?.label || v;
+      tag_history_entries.push({
+        kind:       'face_tag',
+        mesh:       f,
+        from:       oldVal,
+        from_label: labelFor(oldVal),
+        to:         newVal,
+        to_label:   labelFor(newVal),
+        person,
+        timestamp:  now,
+      });
+    }
+  }
+
   try {
     const res = await fetch(API_BASE + '/api/factory-data', {
       method: 'PUT',
@@ -1518,6 +1582,8 @@ async function saveFdpChanges() {
         custom_fields:        FDP_DRAFT_CUSTOM,
         meshes:               FDP_DRAFT_MESHES,
         mesh_comments:        FDP_DRAFT_MESH_COMMENTS,
+        faces:                FDP_DRAFT_FACES,
+        face_comments:        FDP_DRAFT_FACE_COMMENTS,
         tag_history_entries,
       }),
     });
@@ -1550,6 +1616,8 @@ async function saveFdpChanges() {
       custom_fields: { ...FDP_DRAFT_CUSTOM },
       meshes:        { ...FDP_DRAFT_MESHES },
       mesh_comments: { ...FDP_DRAFT_MESH_COMMENTS },
+      faces:         { ...FDP_DRAFT_FACES },
+      face_comments: { ...FDP_DRAFT_FACE_COMMENTS },
       tag_history:   [...existingHistory, ...tag_history_entries].slice(-500),
     };
     renderTable();
