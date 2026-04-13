@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0d10">
 <title>Cage Construction — QR Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -205,6 +208,7 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .cage-table tr:last-child td{border-bottom:none;}
 .cage-ref-cell{font:700 14px var(--sans);color:var(--amber);}
 .ftag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;border:1px solid rgba(255,255,255,.15);}
+.cage-card-meta{display:none;} /* shown only on mobile */
 
 /* ── Detail Panel ── */
 .detail-overlay{
@@ -487,6 +491,220 @@ body{display:flex;flex-direction:column;overflow:hidden;}
     border-radius: 3px;
   }
   @page { size: A4 portrait; margin: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE — base improvements (all screen sizes)
+═══════════════════════════════════════════════════════ */
+
+/* Prevent iOS tap highlight & text size adjust */
+* { -webkit-tap-highlight-color: transparent; }
+input, button, select, textarea { -webkit-appearance: none; appearance: none; font-size: 16px; }
+html { -webkit-text-size-adjust: 100%; }
+
+/* Safe area insets for notch/home-bar phones */
+.header      { padding-left: max(20px, env(safe-area-inset-left));
+               padding-right: max(20px, env(safe-area-inset-right)); }
+.fdp-footer  { padding-bottom: max(14px, env(safe-area-inset-bottom)); }
+.toolbar     { padding-left: max(12px, env(safe-area-inset-left));
+               padding-right: max(12px, env(safe-area-inset-right)); }
+
+/* Larger touch targets on all buttons */
+.btn        { min-height: 40px; }
+.btn-sm     { min-height: 36px; }
+.tag-toggle { min-height: 40px; }
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE — ≤ 640 px
+═══════════════════════════════════════════════════════ */
+@media (max-width: 640px) {
+
+  /* ── Header ── */
+  .header {
+    height: auto;
+    padding: max(10px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) 10px max(14px, env(safe-area-inset-left));
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .header-sub   { display: none; }
+  .header-pill  { display: none; }
+  .header-title { font-size: 14px; }
+  .name-chip    { max-width: 120px; }
+  .name-chip-edit { display: none; }
+  .logout-btn   { padding: 5px 9px; font-size: 10px; gap: 4px; }
+
+  /* ── Toolbar ── */
+  .toolbar {
+    padding: 10px max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left));
+    gap: 8px;
+  }
+  .toolbar-search {
+    width: 100%;
+    flex: 1 1 100%;
+    order: -1;
+    font-size: 16px; /* prevent iOS zoom on focus */
+    padding: 10px 12px;
+  }
+  .t-stat { font-size: 10px; padding: 5px 9px; }
+
+  /* ── Table — replace with card list on mobile ── */
+  .table-wrap { -webkit-overflow-scrolling: touch; }
+  .cage-table { min-width: unset; width: 100%; font-size: 13px; }
+
+  /* Hide less-important columns on small screens */
+  .cage-table th:nth-child(n+3):nth-child(-n+6),
+  .cage-table td:nth-child(n+3):nth-child(-n+6) { display: none; }
+
+  /* Make each row feel like a card */
+  .cage-table thead { display: none; }
+  .cage-table tbody { display: block; padding: 8px; }
+  .cage-table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .cage-table tr:hover { border-color: var(--amber); }
+  .cage-table td {
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    max-width: unset;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+    background: transparent !important;
+  }
+  /* Cage name takes full row */
+  .cage-table td:first-child {
+    flex: 1 1 100%;
+    font-size: 16px;
+  }
+  /* Location + dots row */
+  .cage-table td:nth-child(2),
+  .cage-table td:last-child { flex: 1; }
+
+  /* Hide desktop-only cells on mobile */
+  .hide-mobile { display: none !important; }
+
+  /* Mobile meta line under cage name */
+  .cage-card-meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* ── Detail panel — full-screen bottom sheet on mobile ── */
+  .detail-overlay {
+    align-items: flex-end;
+    justify-content: stretch;
+  }
+  .detail-panel {
+    width: 100%;
+    max-width: 100%;
+    height: 92dvh;
+    border-left: none;
+    border-top: 1px solid var(--line-mid);
+    border-radius: 18px 18px 0 0;
+    transform: translateY(40px);
+    box-shadow: 0 -20px 60px rgba(0,0,0,.6);
+  }
+  .detail-overlay.open .detail-panel { transform: translateY(0); }
+
+  /* Drag handle indicator */
+  .detail-panel::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--line-mid);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+  }
+
+  .fdp-header { padding: 12px 16px 12px; }
+  .fdp-name   { font-size: 22px; }
+  .fdp-body   { padding: 14px 16px; }
+  .fdp-footer {
+    padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+  .fdp-footer .btn { flex: 1; justify-content: center; }
+
+  /* ── Modals — full-width, bottom-anchored on mobile ── */
+  .pin-modal-overlay,
+  .field-modal-overlay,
+  .edit-name-modal-overlay { align-items: flex-end; padding: 0; }
+
+  .pin-modal,
+  .field-modal,
+  .edit-name-modal {
+    border-radius: 18px 18px 0 0;
+    padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+    max-width: 100%;
+    width: 100%;
+  }
+
+  /* PIN input — bigger on mobile */
+  .pin-modal-input { font-size: 22px; padding: 14px 16px; }
+  .auth-input      { font-size: 22px; padding: 14px 16px; }
+
+  /* ── Label Sheet Picker Modal ── */
+  .lsp-modal-overlay { align-items: flex-end; padding: 0; }
+  .lsp-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+  }
+  .lsp-modal-header { padding: 14px 16px 10px; }
+  .lsp-modal-body   { padding: 12px 16px; }
+  .lsp-modal-footer { padding: 12px 16px max(16px, env(safe-area-inset-bottom)); flex-wrap: wrap; }
+  .lsp-modal-sub    { display: none; }
+  .lsp-items        { grid-template-columns: 1fr 1fr; }
+  .lsp-grid         { grid-template-columns: 1fr 1fr; }
+
+  /* ── Auth card ── */
+  .auth-card { border-radius: 0; max-width: 100%; padding: 36px 24px; border: none; }
+  .auth-screen { align-items: flex-start; background: var(--void); }
+
+  /* ── Mesh tag buttons — bigger tap targets ── */
+  .tag-toggle { padding: 10px 12px; font-size: 12px; }
+
+  /* ── Toast — full-width at bottom ── */
+  .toast-wrap {
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 12px;
+    right: 12px;
+  }
+  .toast { max-width: 100%; min-width: unset; width: 100%; }
+
+  /* ── Section labels — more breathing room ── */
+  .fdp-section-label { margin-top: 18px; }
+
+  /* ── Custom fields — single column on mobile ── */
+  .custom-fields-grid { grid-template-columns: 1fr; }
+  .fdp-props          { grid-template-columns: 1fr 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   MOBILE — ≤ 400 px (small iPhones, older Androids)
+═══════════════════════════════════════════════════════ */
+@media (max-width: 400px) {
+  .header-title { font-size: 13px; }
+  .fdp-name     { font-size: 20px; }
+  .lsp-items    { grid-template-columns: 1fr; }
+  .tags-editor  { grid-template-columns: 1fr 1fr; }
 }
 </style>
 </head>
@@ -1061,13 +1279,20 @@ function renderTable() {
     ).join('');
 
     return `<tr onclick="openDetail('${c.id}')">
-      <td><span class="cage-ref-cell">${esc(c.name)}</span></td>
+      <td style="flex:1 1 100%;display:flex;flex-direction:column;gap:4px">
+        <span class="cage-ref-cell">${esc(c.name)}</span>
+        <span class="cage-card-meta">
+          <span style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</span>
+          ${meshDots ? `<span style="margin-left:6px">${meshDots}</span>` : ''}
+          ${activeCageTags.length ? `<span style="margin-left:4px">${cageTagDots}</span>` : ''}
+        </span>
+      </td>
       ${dimCells}
-      <td style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</td>
-      <td style="white-space:nowrap">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
-      <td>${cageTagDots}</td>
+      <td class="hide-mobile" style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</td>
+      <td class="hide-mobile" style="white-space:nowrap">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
+      <td class="hide-mobile">${cageTagDots}</td>
       ${customCells}
-      <td></td>
+      <td class="hide-mobile"></td>
     </tr>`;
   }).join('');
 }
