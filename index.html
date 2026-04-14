@@ -955,10 +955,10 @@ let FDP_DRAFT_FACES         = {}; // face name → 'none'|'blue'|'blue_red'
 let FDP_DRAFT_FACE_COMMENTS = {}; // face name → string comment
 let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
-// Meshes — every cage has N1A and F1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
+// Meshes — every cage has N1A, F1A, B1A and T1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
 // Each mesh can have: no tag, blue tag, or blue+red tag
-const MESH_NAMES = ['N1A','F1A','N3A','N5A','N7A','F3A','F5A','F7A'];
-const REQUIRED_MESHES = ['N1A','F1A'];
+const MESH_NAMES = ['N1A','F1A','B1A','T1A','N3A','N5A','N7A','F3A','F5A','F7A'];
+const REQUIRED_MESHES = ['N1A','F1A','B1A','T1A'];
 const OPTIONAL_MESHES = ['N3A','N5A','N7A','F3A','F5A','F7A'];
 
 // Face properties — N Face and F Face — tag only (no QR code), blue or blue+red
@@ -1970,8 +1970,8 @@ function renderLspItems() {
       comment: null,
     });
 
-    // Mesh QRs
-    const meshesToShow = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
+    // Mesh QRs — show all meshes (required always, optional always available to add)
+    const meshesToShow = [...REQUIRED_MESHES, ...OPTIONAL_MESHES];
     meshesToShow.forEach(m => {
       const state = meshData[m] || 'none';
       const opt = MESH_TAG_OPTS.find(o => o.value === state) || MESH_TAG_OPTS[0];
