@@ -725,50 +725,55 @@ html { -webkit-text-size-adjust: 100%; }
     <span class="name-chip-edit">✎</span>
   </div>
   <button class="logout-btn hidden" id="logout-btn" onclick="doLogout()" title="Log out">&#x23FB; Log out</button>
+  <button class="btn btn-ghost btn-sm" id="login-btn" onclick="openLoginModal()" title="Log in to edit">🔑 Login</button>
 </div>
 
-<!-- ── Auth Screen ── -->
-<div class="auth-screen" id="auth-screen">
-  <div class="auth-card">
+<!-- ── Login Modal ── -->
+<div class="pin-modal-overlay hidden" id="login-modal-overlay">
+  <div class="pin-modal">
 
     <!-- Step 1: PIN -->
-    <div id="auth-step-pin">
-      <div class="auth-icon">📦</div>
-      <div class="auth-title">Cage Tracker</div>
-      <div class="auth-sub">Enter read PIN to view</div>
-      <input class="auth-input" id="pin-input" type="password" maxlength="12"
+    <div id="login-step-pin">
+      <div class="pin-modal-title">🔑 Login</div>
+      <div class="pin-modal-sub">Enter PIN to enable write access</div>
+      <input class="pin-modal-input" id="login-pin-input" type="password" maxlength="12"
         placeholder="• • • • • •" autocomplete="current-password">
-      <button class="auth-btn" onclick="doAuth()">Continue →</button>
-      <div class="auth-err hidden" id="auth-err"></div>
+      <div class="pin-modal-err" id="login-pin-err"></div>
+      <div class="pin-modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="closeLoginModal()">Cancel</button>
+        <button class="btn btn-amber btn-sm" onclick="doLoginAuth()">Continue →</button>
+      </div>
     </div>
 
     <!-- Step 2: Name (shown after PIN succeeds) -->
-    <div id="auth-step-name" class="hidden">
-      <div class="auth-icon">👤</div>
-      <div class="auth-title">Who are you?</div>
-      <div class="auth-sub">Required for tag edit history</div>
-      <div class="auth-name-step">
-        <div>
-          <div class="auth-name-label">First Name</div>
-          <input class="auth-name-input" id="auth-first-name" type="text" maxlength="30"
-            placeholder="First name" autocomplete="given-name">
-        </div>
-        <div>
-          <div class="auth-name-label">Last Name</div>
-          <input class="auth-name-input" id="auth-last-name" type="text" maxlength="30"
-            placeholder="Last name" autocomplete="family-name">
-        </div>
+    <div id="login-step-name" class="hidden">
+      <div class="pin-modal-title">👤 Your Name</div>
+      <div class="pin-modal-sub">Used in tag edit history</div>
+      <div style="margin-bottom:10px">
+        <div style="font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">First Name</div>
+        <input class="pin-modal-input" id="login-first-name" type="text" maxlength="30"
+          placeholder="First name" autocomplete="given-name"
+          style="letter-spacing:normal;font-size:15px;text-align:left;">
       </div>
-      <button class="auth-btn" id="auth-name-btn" onclick="doNameStep()" disabled
-        style="opacity:.45;cursor:not-allowed;">Enter →</button>
-      <div class="auth-err hidden" id="auth-name-err"></div>
+      <div style="margin-bottom:10px">
+        <div style="font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px">Last Name</div>
+        <input class="pin-modal-input" id="login-last-name" type="text" maxlength="30"
+          placeholder="Last name" autocomplete="family-name"
+          style="letter-spacing:normal;font-size:15px;text-align:left;">
+      </div>
+      <div class="pin-modal-err" id="login-name-err"></div>
+      <div class="pin-modal-footer">
+        <button class="btn btn-ghost btn-sm" onclick="closeLoginModal()">Cancel</button>
+        <button class="btn btn-amber btn-sm" id="login-name-btn" onclick="doLoginNameStep()" disabled
+          style="opacity:.45;cursor:not-allowed;">Enter →</button>
+      </div>
     </div>
 
   </div>
 </div>
 
 <!-- ── Main App ── -->
-<div class="app hidden" id="app">
+<div class="app" id="app">
 
   <!-- Toolbar -->
   <div class="toolbar">
@@ -807,25 +812,6 @@ html { -webkit-text-size-adjust: 100%; }
     </div>
     <div class="fdp-body" id="fdp-body"></div>
     <div class="fdp-footer" id="fdp-footer"></div>
-  </div>
-</div>
-
-<!-- ── PIN Unlock Modal ── -->
-<div class="pin-modal-overlay hidden" id="pin-modal-overlay">
-  <div class="pin-modal">
-    <div class="pin-modal-title">🔐 Write Access</div>
-    <div class="pin-modal-sub">Enter write PIN to edit cage data</div>
-    <input class="pin-modal-input" id="write-pin-input" type="password" maxlength="12"
-      placeholder="• • • • • •" autocomplete="current-password">
-    <div style="margin-top:10px;margin-bottom:2px;font:400 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;text-align:left">Your name (for tag audit trail)</div>
-    <input class="pin-modal-input" id="write-name-input" type="text" maxlength="40"
-      placeholder="e.g. John Smith" autocomplete="name"
-      style="letter-spacing:normal;font-size:14px;margin-top:4px">
-    <div class="pin-modal-err" id="write-pin-err"></div>
-    <div class="pin-modal-footer">
-      <button class="btn btn-ghost btn-sm" onclick="closePinModal()">Cancel</button>
-      <button class="btn btn-amber btn-sm" onclick="confirmWritePin()">Unlock →</button>
-    </div>
   </div>
 </div>
 
@@ -931,15 +917,13 @@ html { -webkit-text-size-adjust: 100%; }
 // CONFIG
 // ═══════════════════════════════════════════════════════════════════════
 const API_BASE = 'https://cage-tracker-api.exposurephotographer0.workers.dev';
-const LS_READ_PIN  = 'cc_read_pin';
 const LS_WRITE_PIN = 'cc_write_pin';
 
 // ═══════════════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════════════
-let READ_PIN     = '';   // authenticated read PIN (required to view)
-let WRITE_PIN    = '';   // optional write PIN (for editing cage data)
-let ACCESS_LEVEL = 'read'; // 'read' or 'write' — from auth response
+let WRITE_PIN    = '';   // write PIN — set after login
+let ACCESS_LEVEL = 'read'; // 'read' | 'write' | 'slinger' | 'twc' etc.
 let TAGGER_NAME  = '';   // person's name recorded with tag changes
 
 let ALL_CAGES        = [];
@@ -1041,55 +1025,106 @@ function confirmEditName() {
   TAGGER_NAME = first + ' ' + last;
   localStorage.setItem('cc_tagger_name', TAGGER_NAME);
   updateNameChip();
-  // Also keep write PIN modal name in sync
-  const nameEl = document.getElementById('write-name-input');
-  if (nameEl) nameEl.value = TAGGER_NAME;
   closeEditNameModal();
   toast('Name updated ✓', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// AUTH — read PIN required to enter app
+// BOOTSTRAP — load data immediately, no PIN required to view
 // ═══════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  const savedPin = localStorage.getItem(LS_READ_PIN);
-  if (savedPin) document.getElementById('pin-input').value = savedPin;
-
-  // Restore write PIN silently if saved
+  // Restore a previously saved write PIN silently
   const savedWrite = localStorage.getItem(LS_WRITE_PIN);
   if (savedWrite) WRITE_PIN = savedWrite;
 
-  // Restore tagger name if saved — if we have both a saved PIN AND a saved name,
-  // skip the name step entirely on next login
+  // Restore tagger name
   const savedName = localStorage.getItem('cc_tagger_name');
-  if (savedName) TAGGER_NAME = savedName;
+  if (savedName) TAGGER_NAME = savedName.trim();
 
-  document.getElementById('pin-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') doAuth();
+  // Update header to reflect logged-in state
+  _syncLoginUI();
+
+  // Wire up login modal keyboard shortcuts
+  document.getElementById('login-pin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  doLoginAuth();
+    if (e.key === 'Escape') closeLoginModal();
   });
-
-  // Name step — enable button only when both fields have text
-  function _checkNameReady() {
-    const f = document.getElementById('auth-first-name').value.trim();
-    const l = document.getElementById('auth-last-name').value.trim();
-    const btn = document.getElementById('auth-name-btn');
+  document.getElementById('login-first-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  document.getElementById('login-last-name').focus();
+    if (e.key === 'Escape') closeLoginModal();
+  });
+  document.getElementById('login-last-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  doLoginNameStep();
+    if (e.key === 'Escape') closeLoginModal();
+  });
+  // Enable name step button when both fields filled
+  function _checkLoginName() {
+    const f = document.getElementById('login-first-name').value.trim();
+    const l = document.getElementById('login-last-name').value.trim();
+    const btn = document.getElementById('login-name-btn');
     const ready = f.length > 0 && l.length > 0;
     btn.disabled = !ready;
     btn.style.opacity = ready ? '1' : '.45';
     btn.style.cursor  = ready ? 'pointer' : 'not-allowed';
   }
-  document.getElementById('auth-first-name').addEventListener('input', _checkNameReady);
-  document.getElementById('auth-last-name').addEventListener('input',  _checkNameReady);
-  document.getElementById('auth-first-name').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('auth-last-name').focus(); });
-  document.getElementById('auth-last-name').addEventListener('keydown',  e => { if (e.key === 'Enter') doNameStep(); });
+  document.getElementById('login-first-name').addEventListener('input', _checkLoginName);
+  document.getElementById('login-last-name').addEventListener('input',  _checkLoginName);
+
+  // Overlay click to dismiss login modal
+  document.getElementById('login-modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('login-modal-overlay')) closeLoginModal();
+  });
+
+  // Edit name modal keyboard shortcuts
+  document.getElementById('edit-first-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  document.getElementById('edit-last-name').focus();
+    if (e.key === 'Escape') closeEditNameModal();
+  });
+  document.getElementById('edit-last-name').addEventListener('keydown', e => {
+    if (e.key === 'Enter')  confirmEditName();
+    if (e.key === 'Escape') closeEditNameModal();
+  });
+
+  // Load data straight away — no PIN needed for read
+  loadData();
+
+  // Handle QR deep-link (?cage=)
+  const params  = new URLSearchParams(window.location.search);
+  const cageId  = params.get('cage');
+  if (cageId) {
+    window._qrCageId = cageId;
+    window._qrMeshId = params.get('mesh') || null;
+  }
 });
 
-async function doAuth() {
-  const pin   = document.getElementById('pin-input').value.trim();
-  const errEl = document.getElementById('auth-err');
-  errEl.classList.add('hidden');
+// Keep the header Login / name-chip / logout buttons in sync
+function _syncLoginUI() {
+  const loggedIn = !!(WRITE_PIN);
+  document.getElementById('login-btn').classList.toggle('hidden', loggedIn);
+  document.getElementById('logout-btn').classList.toggle('hidden', !loggedIn);
+  updateNameChip();
+}
 
-  if (!pin) { showAuthErr('Enter your PIN.'); return; }
+// ── Login modal ──────────────────────────────────────────────────────
+function openLoginModal() {
+  document.getElementById('login-pin-input').value = '';
+  document.getElementById('login-pin-err').textContent = '';
+  document.getElementById('login-step-pin').classList.remove('hidden');
+  document.getElementById('login-step-name').classList.add('hidden');
+  document.getElementById('login-modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('login-pin-input').focus(), 80);
+}
+
+function closeLoginModal() {
+  document.getElementById('login-modal-overlay').classList.add('hidden');
+}
+
+async function doLoginAuth() {
+  const pin   = document.getElementById('login-pin-input').value.trim();
+  const errEl = document.getElementById('login-pin-err');
+  errEl.textContent = '';
+
+  if (!pin) { errEl.textContent = 'Enter a PIN.'; return; }
 
   try {
     const res  = await fetch(API_BASE + '/api/auth', {
@@ -1098,84 +1133,65 @@ async function doAuth() {
       body: JSON.stringify({ pin }),
     });
     const data = await res.json();
-    if (!data.ok) { showAuthErr(data.error || 'Incorrect PIN.'); return; }
+    if (!data.ok) { errEl.textContent = data.error || 'Incorrect PIN.'; return; }
 
-    // Stash PIN & access level — don't enter app yet
-    READ_PIN     = pin;
-    ACCESS_LEVEL = data.level || 'read';
-    localStorage.setItem(LS_READ_PIN, pin);
+    // Store the write PIN
+    WRITE_PIN     = pin;
+    ACCESS_LEVEL  = data.level || 'write';
+    localStorage.setItem(LS_WRITE_PIN, pin);
 
     // If we already have a saved name, skip the name step
-    const savedName = localStorage.getItem('cc_tagger_name');
-    if (savedName && savedName.trim()) {
-      TAGGER_NAME = savedName.trim();
-      await _enterApp();
+    if (TAGGER_NAME) {
+      closeLoginModal();
+      _syncLoginUI();
+      toast('Logged in ✓', 'success');
     } else {
       // Show name step
-      document.getElementById('auth-step-pin').classList.add('hidden');
-      document.getElementById('auth-step-name').classList.remove('hidden');
-      setTimeout(() => document.getElementById('auth-first-name').focus(), 80);
+      document.getElementById('login-step-pin').classList.add('hidden');
+      document.getElementById('login-step-name').classList.remove('hidden');
+      document.getElementById('login-first-name').value = '';
+      document.getElementById('login-last-name').value  = '';
+      const btn = document.getElementById('login-name-btn');
+      btn.disabled = true; btn.style.opacity = '.45'; btn.style.cursor = 'not-allowed';
+      setTimeout(() => document.getElementById('login-first-name').focus(), 80);
     }
   } catch(e) {
-    showAuthErr('Could not reach API. Check your connection.');
-    document.getElementById('api-dot').classList.add('err');
+    errEl.textContent = 'Could not reach API. Check your connection.';
   }
 }
 
-async function doNameStep() {
-  const first = document.getElementById('auth-first-name').value.trim();
-  const last  = document.getElementById('auth-last-name').value.trim();
-  const errEl = document.getElementById('auth-name-err');
-  errEl.classList.add('hidden');
+function doLoginNameStep() {
+  const first = document.getElementById('login-first-name').value.trim();
+  const last  = document.getElementById('login-last-name').value.trim();
+  const errEl = document.getElementById('login-name-err');
+  errEl.textContent = '';
 
   if (!first || !last) {
     errEl.textContent = 'Both first and last name are required.';
-    errEl.classList.remove('hidden');
     return;
   }
 
   TAGGER_NAME = first + ' ' + last;
   localStorage.setItem('cc_tagger_name', TAGGER_NAME);
-  await _enterApp();
-}
-
-async function _enterApp() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').classList.remove('hidden');
-  document.getElementById('api-dot').classList.add('ok');
-  document.getElementById('logout-btn').classList.remove('hidden');
-  updateNameChip();
-
-  await loadData();
-  _maybeOpenQRCage();
-}
-
-function showAuthErr(msg) {
-  const el = document.getElementById('auth-err');
-  el.textContent = msg;
-  el.classList.remove('hidden');
+  closeLoginModal();
+  _syncLoginUI();
+  toast('Logged in as ' + TAGGER_NAME + ' ✓', 'success');
 }
 
 function doLogout() {
-  READ_PIN = ''; WRITE_PIN = ''; ACCESS_LEVEL = 'read'; TAGGER_NAME = '';
-  ALL_CAGES = []; FACTORY_DATA = {}; CUSTOM_FIELDS = [];
-  localStorage.removeItem(LS_READ_PIN);
+  WRITE_PIN    = '';
+  ACCESS_LEVEL = 'read';
+  TAGGER_NAME  = '';
+  FDP_EDIT_MODE = false;
   localStorage.removeItem(LS_WRITE_PIN);
   localStorage.removeItem('cc_tagger_name');
-  document.getElementById('logout-btn').classList.add('hidden');
-  document.getElementById('name-chip').classList.add('hidden');
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('auth-screen').style.display = '';
-  // Reset auth steps
-  document.getElementById('auth-step-pin').classList.remove('hidden');
-  document.getElementById('auth-step-name').classList.add('hidden');
-  document.getElementById('pin-input').value = '';
-  document.getElementById('auth-first-name').value = '';
-  document.getElementById('auth-last-name').value = '';
-  document.getElementById('auth-err').classList.add('hidden');
-  document.getElementById('auth-name-err').classList.add('hidden');
-  document.getElementById('api-dot').classList.remove('ok','err');
-  document.getElementById('cage-count-pill').textContent = '—';
+  _syncLoginUI();
+  // Re-render detail panel if open, to remove edit controls
+  if (FDP_CAGE_ID) {
+    const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
+    if (cage) renderDetailBody(cage);
+  }
+  toast('Logged out', 'info');
   // Clear URL params without reload
   window.history.replaceState({}, '', window.location.pathname);
 }
@@ -1185,10 +1201,12 @@ function doLogout() {
 // ═══════════════════════════════════════════════════════════════════════
 async function loadData() {
   try {
+    // Use write PIN for auth if logged in, otherwise send no auth (public read)
+    const authHeader = WRITE_PIN ? { Authorization: 'Bearer ' + WRITE_PIN } : {};
     const [stateRes, fdRes, fsRes] = await Promise.all([
-      fetch(API_BASE + '/api/state',            { headers: { Authorization: 'Bearer ' + READ_PIN } }),
-      fetch(API_BASE + '/api/factory-data',     { headers: { Authorization: 'Bearer ' + READ_PIN } }),
-      fetch(API_BASE + '/api/factory-settings', { headers: { Authorization: 'Bearer ' + READ_PIN } }),
+      fetch(API_BASE + '/api/state',            { headers: authHeader }),
+      fetch(API_BASE + '/api/factory-data',     { headers: authHeader }),
+      fetch(API_BASE + '/api/factory-settings', { headers: authHeader }),
     ]);
     const state = stateRes.ok ? await stateRes.json() : { cages: [] };
     const fd    = fdRes.ok    ? await fdRes.json()    : { data: {} };
@@ -1221,7 +1239,7 @@ async function refreshData() {
 function renderTable() {
   const q = (document.getElementById('search-input').value || '').toLowerCase();
   const filtered = ALL_CAGES.filter(c => !q || (c.name||'').toLowerCase().includes(q));
-  const canSeeDetails = (ACCESS_LEVEL === 'write' || !!WRITE_PIN);
+  const canSeeDetails = !!WRITE_PIN;
 
   document.getElementById('cage-count').textContent = ALL_CAGES.length;
   const pill = ALL_CAGES.length === 0 ? '— cages' : `${ALL_CAGES.length} cage${ALL_CAGES.length!==1?'s':''}`;
@@ -1332,7 +1350,7 @@ function renderDetailBody(cage) {
   cage = cage || ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
   if (!cage) return;
 
-  const canSeeDetails = (ACCESS_LEVEL === 'write' || !!WRITE_PIN);
+  const canSeeDetails = !!WRITE_PIN;
   const appBase = window.location.href.split('?')[0].split('#')[0];
   const cageQrUrl = appBase + '?cage=' + FDP_CAGE_ID;
 
@@ -1519,7 +1537,7 @@ function renderDetailBody(cage) {
         <strong>View Only</strong>
         Enter write PIN to edit meshes and cage data.
       </div>
-      <button class="btn btn-amber btn-sm" onclick="openPinModal()">Edit →</button>
+      <button class="btn btn-amber btn-sm" onclick="openLoginModal()">Edit →</button>
     </div>
   `;
 
@@ -1665,82 +1683,6 @@ function lockEditMode() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// WRITE PIN MODAL
-// ═══════════════════════════════════════════════════════════════════════
-function openPinModal() {
-  document.getElementById('write-pin-input').value = '';
-  document.getElementById('write-pin-err').textContent = '';
-  // Pre-populate name if we already know it
-  const nameEl = document.getElementById('write-name-input');
-  if (nameEl) nameEl.value = TAGGER_NAME || '';
-  document.getElementById('pin-modal-overlay').classList.remove('hidden');
-  setTimeout(() => document.getElementById('write-pin-input').focus(), 80);
-}
-
-function closePinModal() {
-  document.getElementById('pin-modal-overlay').classList.add('hidden');
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('write-pin-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter') confirmWritePin();
-    if (e.key === 'Escape') closePinModal();
-  });
-  document.getElementById('pin-modal-overlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('pin-modal-overlay')) closePinModal();
-  });
-  document.getElementById('edit-first-name').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('edit-last-name').focus();
-    if (e.key === 'Escape') closeEditNameModal();
-  });
-  document.getElementById('edit-last-name').addEventListener('keydown', e => {
-    if (e.key === 'Enter') confirmEditName();
-    if (e.key === 'Escape') closeEditNameModal();
-  });
-});
-
-async function confirmWritePin() {
-  const pin    = document.getElementById('write-pin-input').value.trim();
-  const errEl  = document.getElementById('write-pin-err');
-  errEl.textContent = '';
-
-  if (!pin) { errEl.textContent = 'Enter a PIN.'; return; }
-
-  try {
-    const res  = await fetch(API_BASE + '/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin }),
-    });
-    const data = await res.json();
-    if (!data.ok) {
-      errEl.textContent = data.error || 'Incorrect PIN.';
-      return;
-    }
-
-    // Accept any valid PIN as write PIN — the worker will enforce write permissions
-    WRITE_PIN     = pin;
-    FDP_EDIT_MODE = true;
-    localStorage.setItem(LS_WRITE_PIN, pin);
-
-    // Save tagger name
-    const nameEl = document.getElementById('write-name-input');
-    const name = nameEl ? nameEl.value.trim() : '';
-    if (name) {
-      TAGGER_NAME = name;
-      localStorage.setItem('cc_tagger_name', name);
-    }
-
-    closePinModal();
-    const cage = ALL_CAGES.find(c => c.id === FDP_CAGE_ID);
-    renderDetailBody(cage);
-    toast('Edit mode unlocked', 'success');
-  } catch(e) {
-    errEl.textContent = 'Could not reach API.';
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════
 // TAGS & CUSTOM FIELDS — EDIT
 // ═══════════════════════════════════════════════════════════════════════
 function setMeshTag(mesh, value) {
@@ -1765,14 +1707,11 @@ function toggleFdpTag(key) {
 async function saveFdpChanges() {
   if (!FDP_CAGE_ID) return;
 
-  // Use whichever PIN has write access.
-  // - If the user logged in with the write PIN directly, READ_PIN IS the write PIN.
-  // - If the user unlocked separately via the write PIN modal, WRITE_PIN holds it.
-  // - If only a read PIN is stored, we can't save — surface a clear error.
-  const pin = WRITE_PIN || (ACCESS_LEVEL === 'write' ? READ_PIN : null);
+  // Write PIN is required to save
+  const pin = WRITE_PIN;
   if (!pin) {
-    toast('Enter write PIN first (tap Edit →)', 'error');
-    openPinModal();
+    toast('Login first to save changes (tap 🔑 Login)', 'error');
+    openLoginModal();
     return;
   }
 
@@ -2224,7 +2163,7 @@ function printQR() {
 // CUSTOM FIELD MANAGEMENT
 // ═══════════════════════════════════════════════════════════════════════
 function openAddFieldModal() {
-  if (!WRITE_PIN) { openPinModal(); return; }
+  if (!WRITE_PIN) { openLoginModal(); return; }
   document.getElementById('new-field-name').value = '';
   document.getElementById('new-field-type').value = 'text';
   document.getElementById('field-modal-overlay').classList.remove('hidden');
@@ -2281,69 +2220,17 @@ function esc(s) {
 
 // ── QR deep-link: ?cage=<id> ─────────────────────────────────────────
 // When a QR code is scanned on mobile it opens this app with ?cage=<id>.
-// • If a read PIN is already saved → auto-login and open the cage detail.
-// • If no PIN saved → show the normal auth screen; after login the cage
-//   detail opens automatically.
-// • The detail panel always starts in view-only mode with a visible
-//   "Edit →" button so the write PIN can be entered.
+// • No PIN needed to view — app loads immediately and opens the cage detail.
+// • A Login button is available in the header to unlock write access.
 (function handleQRLaunch() {
-  const params  = new URLSearchParams(window.location.search);
-  const cageId  = params.get('cage');
+  const params = new URLSearchParams(window.location.search);
+  const cageId = params.get('cage');
   if (!cageId) return;
-
-  // Store for use after auth (mesh is optional — set when a mesh QR is scanned)
-  window._qrCageId  = cageId;
-  window._qrMeshId  = params.get('mesh') || null;
-
-  // If a read PIN is already saved, skip the auth screen
-  const savedPin = localStorage.getItem(LS_READ_PIN);
-  if (savedPin) {
-    // Attempt silent auth then open detail
-    window.addEventListener('DOMContentLoaded', async () => {
-      document.getElementById('pin-input').value = savedPin;
-      try {
-        const res  = await fetch(API_BASE + '/api/auth', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: savedPin }),
-        });
-        const data = await res.json();
-        if (data.ok) {
-          READ_PIN     = savedPin;
-          ACCESS_LEVEL = data.level || 'read';
-          // Check if we have a saved name — if so, enter app directly
-          const savedNameQR = localStorage.getItem('cc_tagger_name');
-          if (savedNameQR && savedNameQR.trim()) {
-            TAGGER_NAME = savedNameQR.trim();
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').classList.remove('hidden');
-            document.getElementById('api-dot').classList.add('ok');
-            document.getElementById('logout-btn').classList.remove('hidden');
-            updateNameChip();
-            await loadData();
-            openDetail(cageId, window._qrMeshId || null);
-            window._qrMeshId = null;
-            if (!WRITE_PIN && ACCESS_LEVEL !== 'write') {
-              setTimeout(() => openPinModal(), 400);
-            }
-          } else {
-            // Have PIN but no name — show name step
-            document.getElementById('auth-step-pin').classList.add('hidden');
-            document.getElementById('auth-step-name').classList.remove('hidden');
-            setTimeout(() => document.getElementById('auth-first-name').focus(), 80);
-          }
-          return;
-        }
-      } catch(e) {}
-      // Auth failed — fall back to manual auth screen (PIN may have changed)
-    });
-  } else {
-    // No saved PIN — show auth, open cage after login
-    // doAuth() will call loadData(); we hook into that via _qrCageId
-  }
+  window._qrCageId = cageId;
+  window._qrMeshId = params.get('mesh') || null;
 })();
 
-// Called after successful auth + loadData when a QR launch is in progress
+// Called after loadData() when a QR launch is in progress
 function _maybeOpenQRCage() {
   if (!window._qrCageId) return;
   const id   = window._qrCageId;
@@ -2352,7 +2239,6 @@ function _maybeOpenQRCage() {
   window._qrMeshId = null;
   if (ALL_CAGES.find(c => c.id === id)) {
     openDetail(id, mesh);
-    if (!WRITE_PIN && ACCESS_LEVEL !== 'write') setTimeout(() => openPinModal(), 400);
   }
 }
 </script>
