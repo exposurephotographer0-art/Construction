@@ -965,6 +965,7 @@ let FDP_DRAFT_MESH_AREA_COMMENTS = {}; // mesh name → {goods_in, aux_bay, pall
 let FDP_DRAFT_FACES              = {}; // face name → 'none'|'blue'|'blue_red'
 let FDP_DRAFT_FACE_COMMENTS      = {}; // face name → string comment
 let FDP_DRAFT_CAGE_LOCATION      = ''; // free-text physical cage location
+let FDP_DRAFT_FIELD_VIEW_LINK    = ''; // URL link for field view
 let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
 // Meshes — every cage has N1A, F1A, B1A and T1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
@@ -1387,6 +1388,7 @@ function openDetail(cageId, scannedMesh) {
   FDP_DRAFT_FACES              = { ...(fd.faces || {}) };
   FDP_DRAFT_FACE_COMMENTS      = { ...(fd.face_comments || {}) };
   FDP_DRAFT_CAGE_LOCATION      = fd.cage_location || '';
+  FDP_DRAFT_FIELD_VIEW_LINK    = fd.field_view_link || '';
   // tag_history is read directly from FACTORY_DATA — not drafted (append-only)
 
   // Edit mode if write PIN already stored or initial auth was write level
@@ -1449,6 +1451,25 @@ function renderDetailBody(cage) {
             onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
             oninput="FDP_DRAFT_CAGE_LOCATION=this.value">`
         : `<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font:400 13px var(--mono);color:${FDP_DRAFT_CAGE_LOCATION ? 'var(--text-1)' : 'var(--text-3)'}">${esc(FDP_DRAFT_CAGE_LOCATION) || '—'}</div>`
+      }
+    </div>
+    <div style="margin-bottom:14px">
+      <div style="font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Field View Link</div>
+      ${FDP_EDIT_MODE
+        ? `<input id="fdp-field-view-link" type="url"
+            style="background:var(--surface-3);border:1px solid var(--line);border-radius:6px;padding:9px 12px;
+            color:var(--text-1);font:400 13px var(--mono);width:100%;transition:border-color .15s"
+            placeholder="https://…"
+            value="${esc(FDP_DRAFT_FIELD_VIEW_LINK)}"
+            onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+            oninput="FDP_DRAFT_FIELD_VIEW_LINK=this.value">`
+        : FDP_DRAFT_FIELD_VIEW_LINK
+          ? `<a href="${esc(FDP_DRAFT_FIELD_VIEW_LINK)}" target="_blank" rel="noopener"
+              style="display:inline-flex;align-items:center;gap:6px;background:var(--amber-dim);border:1px solid var(--amber-glow);
+              border-radius:6px;padding:9px 12px;font:600 12px var(--mono);color:var(--amber);text-decoration:none;word-break:break-all">
+              🔗 ${esc(FDP_DRAFT_FIELD_VIEW_LINK)}
+            </a>`
+          : `<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font:400 13px var(--mono);color:var(--text-3)">—</div>`
       }
     </div>`;
 
@@ -1830,6 +1851,8 @@ async function saveFdpChanges() {
   // Collect cage location
   const locEl = document.getElementById('fdp-cage-location');
   if (locEl) FDP_DRAFT_CAGE_LOCATION = locEl.value;
+  const fvlEl = document.getElementById('fdp-field-view-link');
+  if (fvlEl) FDP_DRAFT_FIELD_VIEW_LINK = fvlEl.value.trim();
 
   // Collect custom field values from DOM
   CUSTOM_FIELDS.forEach(f => {
@@ -1933,6 +1956,7 @@ async function saveFdpChanges() {
       body: JSON.stringify({
         cage_id:              FDP_CAGE_ID,
         cage_location:        FDP_DRAFT_CAGE_LOCATION,
+        field_view_link:      FDP_DRAFT_FIELD_VIEW_LINK,
         tags:                 FDP_DRAFT_TAGS,
         custom_fields:        FDP_DRAFT_CUSTOM,
         meshes:               FDP_DRAFT_MESHES,
@@ -1970,6 +1994,7 @@ async function saveFdpChanges() {
       ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
       tags:                { ...FDP_DRAFT_TAGS },
       cage_location:       FDP_DRAFT_CAGE_LOCATION,
+      field_view_link:     FDP_DRAFT_FIELD_VIEW_LINK,
       custom_fields:       { ...FDP_DRAFT_CUSTOM },
       meshes:              { ...FDP_DRAFT_MESHES },
       mesh_grns:           { ...FDP_DRAFT_MESH_GRNS },
