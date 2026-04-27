@@ -933,10 +933,11 @@ let CUSTOM_FIELDS    = [];    // [{name, type, key}]
 let FDP_CAGE_ID      = null;
 let FDP_DRAFT_TAGS   = {};
 let FDP_DRAFT_CUSTOM = {};
-let FDP_DRAFT_MESHES        = {}; // mesh name → 'none'|'blue'|'blue_red'
-let FDP_DRAFT_MESH_COMMENTS = {}; // mesh name → string comment
-let FDP_DRAFT_FACES         = {}; // face name → 'none'|'blue'|'blue_red'
-let FDP_DRAFT_FACE_COMMENTS = {}; // face name → string comment
+let FDP_DRAFT_MESHES             = {}; // mesh name → 'none'|'blue'|'blue_red'
+let FDP_DRAFT_MESH_GRNS          = {}; // mesh name → {reinforcement_grn, plate_grn, tw_plate_grn}
+let FDP_DRAFT_MESH_AREA_COMMENTS = {}; // mesh name → {goods_in, aux_bay, pallet_line, station_3d, goods_out}
+let FDP_DRAFT_FACES              = {}; // face name → 'none'|'blue'|'blue_red'
+let FDP_DRAFT_FACE_COMMENTS      = {}; // face name → string comment
 let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
 // Meshes — every cage has N1A, F1A, B1A and T1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
@@ -1329,10 +1330,11 @@ function openDetail(cageId, scannedMesh) {
   const fd = FACTORY_DATA[cageId] || {};
   FDP_DRAFT_TAGS   = { ...(fd.tags || {}) };
   FDP_DRAFT_CUSTOM = { ...(fd.custom_fields || {}) };
-  FDP_DRAFT_MESHES        = { ...(fd.meshes || {}) };
-  FDP_DRAFT_MESH_COMMENTS = { ...(fd.mesh_comments || {}) };
-  FDP_DRAFT_FACES         = { ...(fd.faces || {}) };
-  FDP_DRAFT_FACE_COMMENTS = { ...(fd.face_comments || {}) };
+  FDP_DRAFT_MESHES             = { ...(fd.meshes || {}) };
+  FDP_DRAFT_MESH_GRNS          = { ...(fd.mesh_grns || {}) };
+  FDP_DRAFT_MESH_AREA_COMMENTS = { ...(fd.mesh_area_comments || {}) };
+  FDP_DRAFT_FACES              = { ...(fd.faces || {}) };
+  FDP_DRAFT_FACE_COMMENTS      = { ...(fd.face_comments || {}) };
   // tag_history is read directly from FACTORY_DATA — not drafted (append-only)
 
   // Edit mode if write PIN already stored or initial auth was write level
@@ -1392,7 +1394,8 @@ function renderDetailBody(cage) {
 
   const meshHtml = meshesToShow.map(m => {
     const current = FDP_DRAFT_MESHES[m] || 'none';
-    const comment = FDP_DRAFT_MESH_COMMENTS[m] || '';
+    const grns = FDP_DRAFT_MESH_GRNS[m] || {};
+    const areaComments = FDP_DRAFT_MESH_AREA_COMMENTS[m] || {};
     const isRequired = REQUIRED_MESHES.includes(m);
     const isScanned = m === FDP_SCANNED_MESH;
     const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
@@ -1411,13 +1414,38 @@ function renderDetailBody(cage) {
     // Print button always visible
     const printBtn = '';
 
+    const grns = FDP_DRAFT_MESH_GRNS[m] || {};
+    const areaComments = FDP_DRAFT_MESH_AREA_COMMENTS[m] || {};
+
+    const GRN_FIELDS = [
+      { key: 'reinforcement_grn', label: 'Reinforcement GRN' },
+      { key: 'plate_grn',         label: 'Plate GRN' },
+      { key: 'tw_plate_grn',      label: 'TW Plate GRN' },
+    ];
+    const AREA_COMMENT_FIELDS = [
+      { key: 'goods_in',     label: 'Goods In Comments' },
+      { key: 'aux_bay',      label: 'Aux Bay Comments' },
+      { key: 'pallet_line',  label: 'Pallet Line Comments' },
+      { key: 'station_3d',   label: '3D Station Comments' },
+      { key: 'goods_out',    label: 'Goods Out Comments' },
+    ];
+
     if (!FDP_EDIT_MODE) {
-      const commentHtml = comment
-        ? `<div style="margin-top:8px;padding:8px 10px;background:var(--surface-3);border-radius:5px;
-            border-left:3px solid var(--amber);font:400 11px var(--mono);color:var(--text-2);line-height:1.5">${esc(comment)}</div>`
-        : '';
+      const grnHtml = GRN_FIELDS.filter(g => grns[g.key]).map(g =>
+        `<div style="display:flex;align-items:baseline;gap:6px">
+          <span style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">${g.label}:</span>
+          <span style="font:700 11px var(--mono);color:var(--text-1)">${esc(grns[g.key])}</span>
+        </div>`
+      ).join('');
+      const areaCommentHtml = AREA_COMMENT_FIELDS.filter(a => areaComments[a.key]).map(a =>
+        `<div style="margin-top:6px;padding:7px 10px;background:var(--surface-3);border-radius:5px;
+          border-left:3px solid var(--amber)">
+          <div style="font:700 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px">${a.label}</div>
+          <div style="font:400 11px var(--mono);color:var(--text-2);line-height:1.5">${esc(areaComments[a.key])}</div>
+        </div>`
+      ).join('');
       return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${grnHtml||areaCommentHtml?'10px':'0'}">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
             <span style="font:700 13px var(--mono);color:${nameColor}">${m}</span>
             ${scannedBadge}${optBadge}
@@ -1427,11 +1455,12 @@ function renderDetailBody(cage) {
             ${printBtn}
           </div>
         </div>
-        ${commentHtml}
+        ${grnHtml ? `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:6px;padding:7px 10px;background:var(--surface-3);border-radius:5px">${grnHtml}</div>` : ''}
+        ${areaCommentHtml}
       </div>`;
     }
 
-    // Edit mode — tag buttons + comment textarea + QR
+    // Edit mode — tag buttons + GRN fields + 5 area comment textareas
     const btns = MESH_TAG_OPTS.map(o => {
       const active = current === o.value;
       return `<button onclick="setMeshTag('${m}','${o.value}')"
@@ -1439,6 +1468,31 @@ function renderDetailBody(cage) {
         background:${active ? (o.value==='blue_red' ? 'linear-gradient(90deg,#3b82f6 50%,#ef4444 50%)' : o.bg) : 'var(--surface-3)'};color:${active ? (o.value==='blue_red' ? '#fff' : o.color) : 'var(--text-3)'};
         font:600 10px var(--mono);cursor:pointer;transition:all .12s">${o.label}</button>`;
     }).join('');
+
+    const grnInputsHtml = GRN_FIELDS.map(g => `
+      <div>
+        <div style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${g.label}</div>
+        <input id="mesh-grn-${m}-${g.key}" type="text"
+          style="background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:6px 8px;
+          color:var(--text-1);font:400 11px var(--mono);width:100%;transition:border-color .15s"
+          placeholder="GRN…"
+          value="${esc(grns[g.key] || '')}"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+          oninput="FDP_DRAFT_MESH_GRNS['${m}']={...( FDP_DRAFT_MESH_GRNS['${m}']||{} ),'${g.key}':this.value}">
+      </div>`).join('');
+
+    const areaTextareasHtml = AREA_COMMENT_FIELDS.map(a => `
+      <div>
+        <div style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px">${a.label}</div>
+        <textarea id="mesh-area-${m}-${a.key}"
+          style="background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:7px 9px;
+          color:var(--text-1);font:400 11px var(--mono);width:100%;resize:vertical;min-height:48px;
+          transition:border-color .15s;line-height:1.5"
+          placeholder="Notes…"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+          oninput="FDP_DRAFT_MESH_AREA_COMMENTS['${m}']={...(FDP_DRAFT_MESH_AREA_COMMENTS['${m}']||{}),'${a.key}':this.value}">${esc(areaComments[a.key] || '')}</textarea>
+      </div>`).join('');
+
     return `<div style="border:${border};border-radius:8px;background:${bg};padding:12px;margin-bottom:8px">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1447,16 +1501,12 @@ function renderDetailBody(cage) {
         </div>
         ${printBtn}
       </div>
-      <div style="display:flex;gap:5px;margin-bottom:8px">${btns}</div>
-      <div style="margin-bottom:8px">
-        <div style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Comment</div>
-        <textarea id="mesh-comment-${m}"
-          style="background:var(--surface-3);border:1px solid var(--line);border-radius:5px;padding:7px 9px;
-          color:var(--text-1);font:400 11px var(--mono);width:100%;resize:vertical;min-height:54px;
-          transition:border-color .15s;line-height:1.5"
-          placeholder="Notes about this mesh…"
-          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
-          oninput="FDP_DRAFT_MESH_COMMENTS['${m}']=this.value">${esc(comment)}</textarea>
+      <div style="display:flex;gap:5px;margin-bottom:10px">${btns}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
+        ${grnInputsHtml}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px">
+        ${areaTextareasHtml}
       </div>
     </div>`;
   }).join('');
@@ -1720,10 +1770,25 @@ async function saveFdpChanges() {
     const el = document.getElementById('cf-' + f.key);
     if (el) FDP_DRAFT_CUSTOM[f.key] = el.value;
   });
-  // Collect mesh comment values from textareas
+  // Collect mesh GRN values from inputs
   MESH_NAMES.forEach(m => {
-    const el = document.getElementById('mesh-comment-' + m);
-    if (el) FDP_DRAFT_MESH_COMMENTS[m] = el.value;
+    const grnKeys = ['reinforcement_grn', 'plate_grn', 'tw_plate_grn'];
+    const grns = {};
+    grnKeys.forEach(k => {
+      const el = document.getElementById('mesh-grn-' + m + '-' + k);
+      if (el) grns[k] = el.value;
+    });
+    if (Object.values(grns).some(v => v)) FDP_DRAFT_MESH_GRNS[m] = { ...(FDP_DRAFT_MESH_GRNS[m] || {}), ...grns };
+  });
+  // Collect mesh area comment values from textareas
+  const AREA_KEYS = ['goods_in', 'aux_bay', 'pallet_line', 'station_3d', 'goods_out'];
+  MESH_NAMES.forEach(m => {
+    const ac = {};
+    AREA_KEYS.forEach(k => {
+      const el = document.getElementById('mesh-area-' + m + '-' + k);
+      if (el) ac[k] = el.value;
+    });
+    FDP_DRAFT_MESH_AREA_COMMENTS[m] = { ...(FDP_DRAFT_MESH_AREA_COMMENTS[m] || {}), ...ac };
   });
   // Collect face comment values from textareas
   FACE_NAMES.forEach(f => {
@@ -1804,7 +1869,8 @@ async function saveFdpChanges() {
         tags:                 FDP_DRAFT_TAGS,
         custom_fields:        FDP_DRAFT_CUSTOM,
         meshes:               FDP_DRAFT_MESHES,
-        mesh_comments:        FDP_DRAFT_MESH_COMMENTS,
+        mesh_grns:            FDP_DRAFT_MESH_GRNS,
+        mesh_area_comments:   FDP_DRAFT_MESH_AREA_COMMENTS,
         faces:                FDP_DRAFT_FACES,
         face_comments:        FDP_DRAFT_FACE_COMMENTS,
         tag_history_entries,
@@ -1835,12 +1901,13 @@ async function saveFdpChanges() {
     const existingHistory = (FACTORY_DATA[FDP_CAGE_ID] || {}).tag_history || [];
     FACTORY_DATA[FDP_CAGE_ID] = {
       ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
-      tags:          { ...FDP_DRAFT_TAGS },
-      custom_fields: { ...FDP_DRAFT_CUSTOM },
-      meshes:        { ...FDP_DRAFT_MESHES },
-      mesh_comments: { ...FDP_DRAFT_MESH_COMMENTS },
-      faces:         { ...FDP_DRAFT_FACES },
-      face_comments: { ...FDP_DRAFT_FACE_COMMENTS },
+      tags:                { ...FDP_DRAFT_TAGS },
+      custom_fields:       { ...FDP_DRAFT_CUSTOM },
+      meshes:              { ...FDP_DRAFT_MESHES },
+      mesh_grns:           { ...FDP_DRAFT_MESH_GRNS },
+      mesh_area_comments:  { ...FDP_DRAFT_MESH_AREA_COMMENTS },
+      faces:               { ...FDP_DRAFT_FACES },
+      face_comments:       { ...FDP_DRAFT_FACE_COMMENTS },
       tag_history:   [...existingHistory, ...tag_history_entries].slice(-500),
     };
     renderTable();
@@ -1854,14 +1921,34 @@ async function saveFdpChanges() {
 // PRINT QR
 // ═══════════════════════════════════════════════════════════════════════
 // Build a single mesh QR card element and append to area
-function _buildMeshCard(cage, m, meshData, meshComments, appBase, idSuffix) {
+function _buildMeshCard(cage, m, meshData, meshGrns, meshAreaComments, appBase, idSuffix) {
   const state = meshData[m] || 'none';
-  const comment = meshComments[m] || '';
+  const grns  = meshGrns[m] || {};
+  const areaComments = meshAreaComments[m] || {};
   const opt = MESH_TAG_OPTS.find(o => o.value === state) || MESH_TAG_OPTS[0];
   const meshQrUrl = appBase + '?cage=' + FDP_CAGE_ID + '&mesh=' + m;
   const tagColor = state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : '#666';
   const tagBg    = state === 'blue' ? '#dbeafe' : state === 'blue_red' ? '#ede9fe' : '#f3f4f6';
   const qrId = 'mp-qr-' + idSuffix;
+
+  const GRN_DEFS = [
+    { key: 'reinforcement_grn', label: 'Reinforcement GRN' },
+    { key: 'plate_grn',         label: 'Plate GRN' },
+    { key: 'tw_plate_grn',      label: 'TW Plate GRN' },
+  ];
+  const AREA_DEFS = [
+    { key: 'goods_in',    label: 'Goods In' },
+    { key: 'aux_bay',     label: 'Aux Bay' },
+    { key: 'pallet_line', label: 'Pallet Line' },
+    { key: 'station_3d',  label: '3D Station' },
+    { key: 'goods_out',   label: 'Goods Out' },
+  ];
+  const grnHtml = GRN_DEFS.filter(g => grns[g.key]).map(g =>
+    `<div style="font-size:10px"><span style="color:#999;text-transform:uppercase;letter-spacing:1px">${esc(g.label)}: </span><strong>${esc(grns[g.key])}</strong></div>`
+  ).join('');
+  const areaHtml = AREA_DEFS.filter(a => areaComments[a.key]).map(a =>
+    `<div style="font-size:9px;margin-top:3px"><span style="color:#999;text-transform:uppercase;letter-spacing:1px">${esc(a.label)}: </span>${esc(areaComments[a.key])}</div>`
+  ).join('');
 
   const card = document.createElement('div');
   card.className = 'mesh-qr-card';
@@ -1871,7 +1958,8 @@ function _buildMeshCard(cage, m, meshData, meshComments, appBase, idSuffix) {
     <div class="mesh-qr-box" id="${qrId}"></div>
     <div class="mesh-qr-url">${esc(meshQrUrl)}</div>
     ${state !== 'none' ? `<div class="mesh-qr-tag" style="color:${tagColor};background:${tagBg};border:1px solid ${tagColor}55">${opt.label}</div>` : ''}
-    ${comment ? `<div class="mesh-qr-comment">${esc(comment)}</div>` : ''}
+    ${grnHtml ? `<div style="margin-top:6px;padding:5px 7px;background:#f9f9f9;border-radius:3px">${grnHtml}</div>` : ''}
+    ${areaHtml ? `<div style="margin-top:4px;padding:5px 7px;background:#f9f9f9;border-radius:3px">${areaHtml}</div>` : ''}
   `;
   return { card, qrId, meshQrUrl };
 }
@@ -1952,8 +2040,8 @@ function renderLspItems() {
   ALL_CAGES.forEach(cage => {
     if (q && !(cage.name || '').toLowerCase().includes(q)) return;
     const fd = FACTORY_DATA[cage.id] || {};
-    const meshData = fd.meshes || {};
-    const meshComments = fd.mesh_comments || {};
+    const meshData         = fd.meshes || {};
+    const meshAreaComments = fd.mesh_area_comments || {};
 
     // Cage-level QR
     items.push({
@@ -1980,7 +2068,7 @@ function renderLspItems() {
         tagState: state,
         tagLabel: opt.label,
         tagColor: state === 'blue' ? '#3b82f6' : state === 'blue_red' ? '#7c3aed' : null,
-        comment: meshComments[m] || null,
+        comment: meshAreaComments[m]?.goods_in || null,
       });
     });
   });
@@ -2093,12 +2181,13 @@ function printSingleMeshQR(meshName) {
   const appBase = window.location.href.split('?')[0].split('#')[0];
   const fd = FACTORY_DATA[FDP_CAGE_ID] || {};
   // Use draft values so unsaved changes are reflected
-  const meshData     = { ...( fd.meshes || {}),         ...FDP_DRAFT_MESHES };
-  const meshComments = { ...(fd.mesh_comments || {}),   ...FDP_DRAFT_MESH_COMMENTS };
+  const meshData         = { ...( fd.meshes || {}),              ...FDP_DRAFT_MESHES };
+  const meshGrns         = { ...(fd.mesh_grns || {}),            ...FDP_DRAFT_MESH_GRNS };
+  const meshAreaComments = { ...(fd.mesh_area_comments || {}),   ...FDP_DRAFT_MESH_AREA_COMMENTS };
 
   const area = document.getElementById('mesh-print-area');
   area.innerHTML = '';
-  const { card, qrId, meshQrUrl } = _buildMeshCard(cage, meshName, meshData, meshComments, appBase, meshName + '_single');
+  const { card, qrId, meshQrUrl } = _buildMeshCard(cage, meshName, meshData, meshGrns, meshAreaComments, appBase, meshName + '_single');
   area.appendChild(card);
   new QRCode(document.getElementById(qrId), {
     text: meshQrUrl, width: 150, height: 150,
@@ -2114,8 +2203,9 @@ function printMeshQRs() {
   if (!cage) return;
   const appBase = window.location.href.split('?')[0].split('#')[0];
   const fd = FACTORY_DATA[FDP_CAGE_ID] || {};
-  const meshData     = { ...(fd.meshes || {}),        ...FDP_DRAFT_MESHES };
-  const meshComments = { ...(fd.mesh_comments || {}), ...FDP_DRAFT_MESH_COMMENTS };
+  const meshData         = { ...(fd.meshes || {}),             ...FDP_DRAFT_MESHES };
+  const meshGrns         = { ...(fd.mesh_grns || {}),          ...FDP_DRAFT_MESH_GRNS };
+  const meshAreaComments = { ...(fd.mesh_area_comments || {}), ...FDP_DRAFT_MESH_AREA_COMMENTS };
 
   // Required always; optional if they have a tag
   const meshesToPrint = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
@@ -2124,7 +2214,7 @@ function printMeshQRs() {
   area.innerHTML = '';
 
   meshesToPrint.forEach(m => {
-    const { card, qrId, meshQrUrl } = _buildMeshCard(cage, m, meshData, meshComments, appBase, m + '_all');
+    const { card, qrId, meshQrUrl } = _buildMeshCard(cage, m, meshData, meshGrns, meshAreaComments, appBase, m + '_all');
     area.appendChild(card);
     new QRCode(document.getElementById(qrId), {
       text: meshQrUrl, width: 120, height: 120,
