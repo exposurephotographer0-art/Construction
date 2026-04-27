@@ -166,6 +166,12 @@ body{display:flex;flex-direction:column;overflow:hidden;}
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
   flex-shrink:0;background:var(--surface-1);
 }
+.toolbar-filter{
+  background:var(--surface-3);border:1px solid var(--line);border-radius:7px;
+  padding:7px 10px;color:var(--text-1);font:400 12px var(--mono);
+  transition:border-color .15s;cursor:pointer;
+}
+.toolbar-filter:focus{outline:none;border-color:var(--amber);}
 .toolbar-search{
   background:var(--surface-3);border:1px solid var(--line);border-radius:7px;
   padding:7px 12px;color:var(--text-1);font:400 12px var(--mono);width:220px;
@@ -545,6 +551,10 @@ html { -webkit-text-size-adjust: 100%; }
     font-size: 16px; /* prevent iOS zoom on focus */
     padding: 10px 12px;
   }
+  .toolbar-filter {
+    flex: 1 1 calc(50% - 4px);
+    font-size: 14px;
+  }
   .t-stat { font-size: 10px; padding: 5px 9px; }
 
   /* ── Table — replace with card list on mobile ── */
@@ -778,13 +788,29 @@ html { -webkit-text-size-adjust: 100%; }
   <!-- Toolbar -->
   <div class="toolbar">
     <input class="toolbar-search" type="text" id="search-input" placeholder="Search cage…" oninput="renderTable()">
+    <select class="toolbar-filter" id="filter-location" onchange="renderTable()" title="Filter by status/location">
+      <option value="">All Locations</option>
+      <option value="facility">In Facility</option>
+      <option value="rmd">RMD</option>
+      <option value="frame">Frame</option>
+      <option value="shipped">Shipped</option>
+    </select>
+    <select class="toolbar-filter" id="filter-tag" onchange="renderTable()" title="Filter by cage tag">
+      <option value="">All Tags</option>
+      <option value="tag_green">Green</option>
+      <option value="tag_green_red">Green &amp; Red</option>
+      <option value="tag_pink">Pink</option>
+      <option value="tag_yellow">Yellow</option>
+      <option value="tag_white">White</option>
+      <option value="tag_purple">Purple</option>
+      <option value="tag_orange">Orange</option>
+      <option value="__none">No Tags</option>
+    </select>
     <div class="t-stat"><span id="cage-count">0</span> cages</div>
     <div style="flex:1"></div>
     <button class="btn btn-ghost btn-sm" onclick="openAddFieldModal()">+ Add Field</button>
     <button class="btn btn-amber btn-sm" onclick="openLabelSheetPicker()">⎙ Print Labels</button>
-    <button class="btn btn-ghost btn-sm" onclick="refreshData()">
-      <span class="spinner" style="width:11px;height:11px;border-width:1.5px;" id="refresh-spin"></span> Refresh
-    </button>
+    <button class="btn btn-ghost btn-sm" onclick="refreshData()" title="Reload data from server">↺ Refresh</button>
   </div>
 
   <!-- Table -->
@@ -938,6 +964,7 @@ let FDP_DRAFT_MESH_GRNS          = {}; // mesh name → {reinforcement_grn, plat
 let FDP_DRAFT_MESH_AREA_COMMENTS = {}; // mesh name → {goods_in, aux_bay, pallet_line, station_3d, goods_out}
 let FDP_DRAFT_FACES              = {}; // face name → 'none'|'blue'|'blue_red'
 let FDP_DRAFT_FACE_COMMENTS      = {}; // face name → string comment
+let FDP_DRAFT_CAGE_LOCATION      = ''; // free-text physical cage location
 let FDP_EDIT_MODE           = false; // whether write PIN is active for this panel
 
 // Meshes — every cage has N1A, F1A, B1A and T1A; optional extras are N3A/N5A/N7A/F3A/F5A/F7A
@@ -1218,6 +1245,7 @@ async function loadData() {
     CUSTOM_FIELDS = fs.customFields || [];
 
     renderTable();
+    _maybeOpenQRCage();
     document.getElementById('api-dot').classList.remove('err');
     document.getElementById('api-dot').classList.add('ok');
   } catch(e) {
@@ -1227,20 +1255,40 @@ async function loadData() {
 }
 
 async function refreshData() {
-  const spin = document.getElementById('refresh-spin');
-  spin.style.display = 'inline-block';
+  const btn = document.querySelector('[onclick="refreshData()"]');
+  if (btn) { btn.textContent = '↺ Loading…'; btn.disabled = true; }
   await loadData();
-  spin.style.display = 'none';
-  toast('Refreshed', 'success');
+  if (btn) { btn.textContent = '↺ Refresh'; btn.disabled = false; }
+  toast('Refreshed ✓', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════════════════
 // TABLE RENDER
 // ═══════════════════════════════════════════════════════════════════════
 function renderTable() {
-  const q = (document.getElementById('search-input').value || '').toLowerCase();
-  const filtered = ALL_CAGES.filter(c => !q || (c.name||'').toLowerCase().includes(q));
+  const q          = (document.getElementById('search-input').value || '').toLowerCase();
+  const locFilter  = (document.getElementById('filter-location')?.value || '');
+  const tagFilter  = (document.getElementById('filter-tag')?.value || '');
   const canSeeDetails = !!WRITE_PIN;
+
+  let filtered = ALL_CAGES.filter(c => {
+    if (q && !(c.name||'').toLowerCase().includes(q)) return false;
+    if (locFilter) {
+      const loc = (c.location || 'facility');
+      if (locFilter === 'shipped' && loc !== 'shipped' && loc !== 'sea') return false;
+      if (locFilter !== 'shipped' && loc !== locFilter) return false;
+    }
+    if (tagFilter) {
+      const fd = FACTORY_DATA[c.id] || {};
+      const cageTags = fd.tags || {};
+      if (tagFilter === '__none') {
+        if (CAGE_TAG_DEFS.some(t => cageTags[t.key])) return false;
+      } else {
+        if (!cageTags[tagFilter]) return false;
+      }
+    }
+    return true;
+  });
 
   document.getElementById('cage-count').textContent = ALL_CAGES.length;
   const pill = ALL_CAGES.length === 0 ? '— cages' : `${ALL_CAGES.length} cage${ALL_CAGES.length!==1?'s':''}`;
@@ -1253,16 +1301,16 @@ function renderTable() {
     ? `<th>W (m)</th><th>H (m)</th><th>L (m)</th><th>Weight (t)</th>`
     : '';
   thead.innerHTML = `<tr>
-    <th>Cage</th>${dimCols}<th>Location</th><th>Meshes</th><th>Tags</th>
+    <th>Cage</th>${dimCols}<th>Location</th><th>Cage Location</th><th>Meshes</th><th>Tags</th>
     ${customCols}
     <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
   </tr>`;
 
   // tbody
   const tbody = document.getElementById('cage-tbody');
-  const colCount = (canSeeDetails ? 4 : 0) + 4 + CUSTOM_FIELDS.length + 1;
+  const colCount = (canSeeDetails ? 4 : 0) + 5 + CUSTOM_FIELDS.length + 1;
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${q ? 'No cages match search' : 'No cages found'}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${(q||locFilter||tagFilter) ? 'No cages match filters' : 'No cages found'}</td></tr>`;
     return;
   }
 
@@ -1271,6 +1319,7 @@ function renderTable() {
     const cageTags = fd.tags || {};
     const meshData = fd.meshes || {};
     const customFields = fd.custom_fields || {};
+    const cageLocation = fd.cage_location || '';
 
     // Cage-level tags (non-blue)
     const activeCageTags = CAGE_TAG_DEFS.filter(t => cageTags[t.key]);
@@ -1302,12 +1351,14 @@ function renderTable() {
         <span class="cage-ref-cell">${esc(c.name)}</span>
         <span class="cage-card-meta">
           <span style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</span>
+          ${cageLocation ? `<span style="color:var(--text-3);font:400 11px var(--mono)"> · ${esc(cageLocation)}</span>` : ''}
           ${meshDots ? `<span style="margin-left:6px">${meshDots}</span>` : ''}
           ${activeCageTags.length ? `<span style="margin-left:4px">${cageTagDots}</span>` : ''}
         </span>
       </td>
       ${dimCells}
       <td class="hide-mobile" style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</td>
+      <td class="hide-mobile" style="color:var(--text-2);font:400 11px var(--mono);max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(cageLocation) || '<span style="color:var(--text-3)">—</span>'}</td>
       <td class="hide-mobile" style="white-space:nowrap">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
       <td class="hide-mobile">${cageTagDots}</td>
       ${customCells}
@@ -1335,6 +1386,7 @@ function openDetail(cageId, scannedMesh) {
   FDP_DRAFT_MESH_AREA_COMMENTS = { ...(fd.mesh_area_comments || {}) };
   FDP_DRAFT_FACES              = { ...(fd.faces || {}) };
   FDP_DRAFT_FACE_COMMENTS      = { ...(fd.face_comments || {}) };
+  FDP_DRAFT_CAGE_LOCATION      = fd.cage_location || '';
   // tag_history is read directly from FACTORY_DATA — not drafted (append-only)
 
   // Edit mode if write PIN already stored or initial auth was write level
@@ -1385,7 +1437,20 @@ function renderDetailBody(cage) {
   // Location
   const locationHtml = `
     <div class="fdp-section-label">Location</div>
-    <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;margin-bottom:14px;font:400 13px var(--mono);color:var(--text-2)">${esc(locLabel(cage))}</div>`;
+    <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:10px 13px;margin-bottom:10px;font:400 13px var(--mono);color:var(--text-2)">${esc(locLabel(cage))}</div>
+    <div style="margin-bottom:14px">
+      <div style="font:700 10px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.12em;margin-bottom:5px">Cage Location</div>
+      ${FDP_EDIT_MODE
+        ? `<input id="fdp-cage-location" type="text"
+            style="background:var(--surface-3);border:1px solid var(--line);border-radius:6px;padding:9px 12px;
+            color:var(--text-1);font:400 13px var(--mono);width:100%;transition:border-color .15s"
+            placeholder="e.g. Bay 3 North, Rack 5…"
+            value="${esc(FDP_DRAFT_CAGE_LOCATION)}"
+            onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'"
+            oninput="FDP_DRAFT_CAGE_LOCATION=this.value">`
+        : `<div style="background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:9px 12px;font:400 13px var(--mono);color:${FDP_DRAFT_CAGE_LOCATION ? 'var(--text-1)' : 'var(--text-3)'}">${esc(FDP_DRAFT_CAGE_LOCATION) || '—'}</div>`
+      }
+    </div>`;
 
   // Mesh section
   const meshesToShow = FDP_EDIT_MODE
@@ -1762,6 +1827,10 @@ async function saveFdpChanges() {
     return;
   }
 
+  // Collect cage location
+  const locEl = document.getElementById('fdp-cage-location');
+  if (locEl) FDP_DRAFT_CAGE_LOCATION = locEl.value;
+
   // Collect custom field values from DOM
   CUSTOM_FIELDS.forEach(f => {
     const el = document.getElementById('cf-' + f.key);
@@ -1863,6 +1932,7 @@ async function saveFdpChanges() {
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + pin },
       body: JSON.stringify({
         cage_id:              FDP_CAGE_ID,
+        cage_location:        FDP_DRAFT_CAGE_LOCATION,
         tags:                 FDP_DRAFT_TAGS,
         custom_fields:        FDP_DRAFT_CUSTOM,
         meshes:               FDP_DRAFT_MESHES,
@@ -1899,6 +1969,7 @@ async function saveFdpChanges() {
     FACTORY_DATA[FDP_CAGE_ID] = {
       ...(FACTORY_DATA[FDP_CAGE_ID] || {}),
       tags:                { ...FDP_DRAFT_TAGS },
+      cage_location:       FDP_DRAFT_CAGE_LOCATION,
       custom_fields:       { ...FDP_DRAFT_CUSTOM },
       meshes:              { ...FDP_DRAFT_MESHES },
       mesh_grns:           { ...FDP_DRAFT_MESH_GRNS },
