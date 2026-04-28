@@ -716,6 +716,231 @@ html { -webkit-text-size-adjust: 100%; }
   .lsp-items    { grid-template-columns: 1fr; }
   .tags-editor  { grid-template-columns: 1fr 1fr; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   TAB NAV
+═══════════════════════════════════════════════════════ */
+.tab-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 20px;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+}
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 14px;
+  height: 40px;
+  font: 600 12px var(--sans);
+  color: var(--text-3);
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--text-1); }
+.tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+.tab-btn .tab-icon { font-size: 14px; }
+.tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+.tab-panel.active { display: flex; }
+
+/* ═══════════════════════════════════════════════════════
+   DB EXPLORER TAB
+═══════════════════════════════════════════════════════ */
+.db-layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 210px 1fr;
+  overflow: hidden;
+}
+.db-sidebar {
+  border-right: 1px solid var(--line);
+  background: var(--surface-1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.db-sidebar-hd {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  font: 700 9px var(--mono);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.db-tables-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+.db-table-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: 400 12px var(--mono);
+  color: var(--text-2);
+  border: 1px solid transparent;
+  transition: all .12s;
+}
+.db-table-item:hover { background: var(--surface-2); color: var(--text-1); }
+.db-table-item.active {
+  background: var(--amber-dim);
+  border-color: var(--amber-glow);
+  color: var(--amber);
+  font-weight: 700;
+}
+.db-table-rows {
+  margin-left: auto;
+  font: 400 9px var(--mono);
+  color: var(--text-3);
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+.db-main {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.db-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  flex-shrink: 0;
+}
+.db-query-input {
+  flex: 1;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 8px 12px;
+  font: 400 12px var(--mono);
+  color: var(--text-1);
+  outline: none;
+  transition: border-color .15s;
+}
+.db-query-input:focus { border-color: var(--amber); }
+.db-query-input::placeholder { color: var(--text-3); }
+.db-results-area { flex: 1; overflow: auto; }
+.db-results-area::-webkit-scrollbar { width: 4px; height: 4px; }
+.db-results-area::-webkit-scrollbar-thumb { background: var(--line-mid); border-radius: 2px; }
+.db-results-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-1);
+  font: 400 11px var(--mono);
+  color: var(--text-3);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.db-chip {
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-glow);
+  color: var(--amber);
+  font: 700 9px var(--mono);
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: .04em;
+}
+.db-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.db-table thead { position: sticky; top: 33px; z-index: 4; }
+.db-table th {
+  background: var(--surface-2);
+  text-align: left;
+  padding: 8px 12px;
+  font: 700 9px var(--mono);
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.db-table th:first-child { border-left: 2px solid var(--amber); }
+.db-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+  font: 400 12px var(--mono);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.db-table td.db-null { color: var(--text-3); font-style: italic; }
+.db-table td.db-num  { color: #0ea5e9; }
+.db-table td.db-bool { color: #16a34a; }
+.db-table tr:hover td { background: var(--surface-2); }
+.db-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 10px;
+  color: var(--text-3);
+}
+.db-empty-icon { font-size: 36px; opacity: .3; }
+.db-empty p { font: 400 12px var(--mono); text-align: center; max-width: 260px; line-height: 1.7; }
+.db-error {
+  margin: 16px;
+  background: rgba(248,113,113,.07);
+  border: 1px solid rgba(248,113,113,.25);
+  border-radius: 7px;
+  padding: 14px 16px;
+  font: 400 12px var(--mono);
+  color: #b91c1c;
+  line-height: 1.6;
+}
+.db-loading {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; gap: 10px;
+  color: var(--text-3); font: 400 12px var(--mono);
+}
+.db-lock-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-glow);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font: 400 12px var(--mono);
+  color: var(--amber);
+}
+.db-lock-banner strong { font: 700 13px var(--sans); color: var(--text-1); display: block; margin-bottom: 2px; }
+.db-pagination {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; border-top: 1px solid var(--line);
+  background: var(--surface-1); font: 400 11px var(--mono); color: var(--text-3);
+  flex-shrink: 0;
+}
+@media (max-width: 640px) {
+  .db-layout { grid-template-columns: 1fr; }
+  .db-sidebar { display: none; }
+  .tab-btn { padding: 0 10px; font-size: 11px; gap: 5px; }
+  .tab-btn .tab-icon { display: none; }
+}
 </style>
 </head>
 <body>
@@ -782,7 +1007,18 @@ html { -webkit-text-size-adjust: 100%; }
   </div>
 </div>
 
+<!-- ── Tab Nav ── -->
+<nav class="tab-nav">
+  <button class="tab-btn active" id="tab-btn-cages" onclick="switchTab('cages')">
+    <span class="tab-icon">⬡</span> Cage Tracker
+  </button>
+  <button class="tab-btn" id="tab-btn-db" onclick="switchTab('db')">
+    <span class="tab-icon">🗄</span> Database
+  </button>
+</nav>
+
 <!-- ── Main App ── -->
+<div class="tab-panel active" id="tab-panel-cages">
 <div class="app" id="app">
 
   <!-- Toolbar -->
@@ -821,9 +1057,55 @@ html { -webkit-text-size-adjust: 100%; }
     </table>
   </div>
 
-</div>
+</div><!-- /.app -->
+</div><!-- /#tab-panel-cages -->
 
-<!-- ── Detail Panel ── -->
+<!-- ── Database Explorer Tab ── -->
+<div class="tab-panel" id="tab-panel-db">
+  <div id="db-lock-screen" class="db-lock-banner" style="display:none">
+    <span style="font-size:22px">🔒</span>
+    <div>
+      <strong>Write PIN Required</strong>
+      The Database tab requires write access. Use the Login button in the header to unlock.
+    </div>
+  </div>
+  <div class="db-layout" id="db-layout" style="display:none">
+    <!-- Sidebar: table list -->
+    <aside class="db-sidebar">
+      <div class="db-sidebar-hd">
+        <span>Tables</span>
+        <span id="db-table-count" style="font-weight:400">—</span>
+      </div>
+      <div class="db-tables-list" id="db-tables-list">
+        <div class="db-empty" style="height:120px">
+          <p>Loading…</p>
+        </div>
+      </div>
+    </aside>
+    <!-- Main: query + results -->
+    <main class="db-main">
+      <div class="db-toolbar">
+        <input class="db-query-input" id="db-query-input"
+          placeholder="SELECT * FROM table_name LIMIT 100"
+          onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey))dbRunQuery()" />
+        <button class="btn btn-amber btn-sm" onclick="dbRunQuery()">▶ Run</button>
+        <button class="btn btn-ghost btn-sm" id="db-export-btn" onclick="dbExportCSV()" style="display:none">⬇ CSV</button>
+      </div>
+      <div class="db-results-area" id="db-results-area">
+        <div class="db-empty" style="height:100%">
+          <div class="db-empty-icon">⬡</div>
+          <p>Select a table from the sidebar or write a SQL query and hit Run.</p>
+        </div>
+      </div>
+      <div class="db-pagination" id="db-pagination" style="display:none">
+        <button class="btn btn-ghost btn-sm" id="db-prev-btn" onclick="dbChangePage(-1)" disabled>← Prev</button>
+        <span id="db-page-info" style="margin:0 8px">Page 1</span>
+        <button class="btn btn-ghost btn-sm" id="db-next-btn" onclick="dbChangePage(1)">Next →</button>
+        <span id="db-row-range" style="margin-left:auto"></span>
+      </div>
+    </main>
+  </div>
+</div><!-- /#tab-panel-db -->
 <div class="detail-overlay" id="detail-overlay" onclick="handleOverlayClick(event)">
   <div class="detail-panel">
     <div class="fdp-header">
@@ -2424,6 +2706,208 @@ function _maybeOpenQRCage() {
     openDetail(id, mesh);
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ═══════════════════════════════════════════════════════════════════════
+let _activeTab = 'cages';
+
+function switchTab(tab) {
+  if (_activeTab === tab) return;
+  _activeTab = tab;
+
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-panel-' + tab).classList.add('active');
+  document.getElementById('tab-btn-' + tab).classList.add('active');
+
+  if (tab === 'db') dbInit();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// DB EXPLORER
+// ═══════════════════════════════════════════════════════════════════════
+const DB_PAGE_SIZE = 100;
+let _dbData      = [];
+let _dbPage      = 0;
+let _dbQueryMs   = 0;
+let _dbInitDone  = false;
+
+function dbInit() {
+  if (!WRITE_PIN) {
+    document.getElementById('db-lock-screen').style.display = 'flex';
+    document.getElementById('db-layout').style.display = 'none';
+    return;
+  }
+  document.getElementById('db-lock-screen').style.display = 'none';
+  document.getElementById('db-layout').style.display = 'grid';
+  if (!_dbInitDone) { _dbInitDone = true; dbLoadTables(); }
+}
+
+async function dbLoadTables() {
+  const listEl = document.getElementById('db-tables-list');
+  listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>Loading…</p></div>';
+  try {
+    const res = await fetch(API_BASE + '/api/db-tables', {
+      headers: { Authorization: 'Bearer ' + WRITE_PIN }
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || 'Failed');
+    const tables = data.tables || [];
+    document.getElementById('db-table-count').textContent = tables.length;
+    if (!tables.length) {
+      listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>No tables found.</p></div>';
+      return;
+    }
+    listEl.innerHTML = tables.map(t => `
+      <div class="db-table-item" id="dbtbl-${CSS.escape(t.name)}" onclick="dbSelectTable('${t.name.replace(/'/g,"\\'")}')">
+        <span>▤</span>
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${t.name}</span>
+        ${t.rows !== null ? `<span class="db-table-rows">${t.rows}</span>` : ''}
+      </div>`).join('');
+  } catch(e) {
+    listEl.innerHTML = `<div class="db-error">Failed to load tables: ${e.message}</div>`;
+  }
+}
+
+function dbSelectTable(name) {
+  document.querySelectorAll('.db-table-item').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('dbtbl-' + CSS.escape(name));
+  if (el) el.classList.add('active');
+  document.getElementById('db-query-input').value = `SELECT * FROM "${name}" LIMIT 500`;
+  dbRunQuery();
+}
+
+async function dbRunQuery() {
+  const sql = document.getElementById('db-query-input').value.trim();
+  if (!sql) return;
+  if (!WRITE_PIN) { toast('Login required to run queries', 'error'); return; }
+
+  dbShowLoading();
+  const t0 = performance.now();
+  try {
+    const res = await fetch(API_BASE + '/api/db-query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+      body: JSON.stringify({ sql }),
+    });
+    const data = await res.json();
+    _dbQueryMs = Math.round(performance.now() - t0);
+    if (!data.ok) {
+      dbShowError(data.error || 'Query failed');
+      document.getElementById('db-pagination').style.display = 'none';
+      document.getElementById('db-export-btn').style.display = 'none';
+      return;
+    }
+    _dbData = data.results || [];
+    _dbPage = 0;
+    dbRenderResults();
+  } catch(e) {
+    dbShowError(e.message);
+    document.getElementById('db-pagination').style.display = 'none';
+    document.getElementById('db-export-btn').style.display = 'none';
+  }
+}
+
+function dbRenderResults() {
+  const area       = document.getElementById('db-results-area');
+  const pagination = document.getElementById('db-pagination');
+  const exportBtn  = document.getElementById('db-export-btn');
+
+  if (!_dbData.length) {
+    area.innerHTML = `
+      <div class="db-results-meta"><span class="db-chip">0 ROWS</span><span>${_dbQueryMs}ms</span></div>
+      <div class="db-empty" style="height:calc(100% - 34px)">
+        <div class="db-empty-icon" style="font-size:28px;opacity:.25">∅</div>
+        <p>Query returned no results.</p>
+      </div>`;
+    pagination.style.display = 'none';
+    exportBtn.style.display = 'none';
+    return;
+  }
+
+  const totalPages = Math.ceil(_dbData.length / DB_PAGE_SIZE);
+  const start      = _dbPage * DB_PAGE_SIZE;
+  const end        = Math.min(start + DB_PAGE_SIZE, _dbData.length);
+  const pageData   = _dbData.slice(start, end);
+  const cols       = Object.keys(pageData[0]);
+
+  const thead = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead>`;
+  const tbody = '<tbody>' + pageData.map(row =>
+    '<tr>' + cols.map(c => {
+      const v = row[c];
+      if (v === null || v === undefined) return `<td class="db-null">NULL</td>`;
+      if (typeof v === 'number') return `<td class="db-num">${v}</td>`;
+      if (typeof v === 'boolean') return `<td class="db-bool">${v}</td>`;
+      const s = String(v);
+      return `<td title="${s.replace(/"/g,'&quot;')}">${esc(s)}</td>`;
+    }).join('') + '</tr>'
+  ).join('') + '</tbody>';
+
+  area.innerHTML = `
+    <div class="db-results-meta">
+      <span class="db-chip">${_dbData.length} ROWS</span>
+      <span>${cols.length} cols</span>
+      <span>${_dbQueryMs}ms</span>
+    </div>
+    <table class="db-table">${thead}${tbody}</table>`;
+
+  if (_dbData.length > DB_PAGE_SIZE) {
+    pagination.style.display = 'flex';
+    document.getElementById('db-prev-btn').disabled = _dbPage === 0;
+    document.getElementById('db-next-btn').disabled = _dbPage >= totalPages - 1;
+    document.getElementById('db-page-info').textContent = `Page ${_dbPage + 1} / ${totalPages}`;
+    document.getElementById('db-row-range').textContent  = `Rows ${start + 1}–${end} of ${_dbData.length}`;
+  } else {
+    pagination.style.display = 'none';
+  }
+  exportBtn.style.display = 'inline-flex';
+}
+
+function dbChangePage(dir) {
+  const total = Math.ceil(_dbData.length / DB_PAGE_SIZE);
+  _dbPage = Math.max(0, Math.min(_dbPage + dir, total - 1));
+  dbRenderResults();
+  document.getElementById('db-results-area').scrollTop = 0;
+}
+
+function dbExportCSV() {
+  if (!_dbData.length) return;
+  const cols = Object.keys(_dbData[0]);
+  const csv  = [
+    cols.join(','),
+    ..._dbData.map(row =>
+      cols.map(c => {
+        const s = String(row[c] ?? '');
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g,'""')}"` : s;
+      }).join(',')
+    )
+  ].join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = `db-export-${Date.now()}.csv`;
+  a.click();
+}
+
+function dbShowLoading() {
+  document.getElementById('db-results-area').innerHTML =
+    `<div class="db-loading"><div class="spinner"></div><span>Running query…</span></div>`;
+  document.getElementById('db-pagination').style.display = 'none';
+}
+
+function dbShowError(msg) {
+  document.getElementById('db-results-area').innerHTML =
+    `<div class="db-error"><strong>Error</strong><br><br>${esc(msg)}</div>`;
+}
+
+// Re-init DB tab if user logs in while DB tab hasn't been set up yet,
+// or they were locked out before.
+const _origLoginSuccess = window._onLoginSuccess;
+window._onLoginSuccess = function(pin) {
+  if (typeof _origLoginSuccess === 'function') _origLoginSuccess(pin);
+  if (_activeTab === 'db') dbInit();
+};
 </script>
 </body>
 </html>
