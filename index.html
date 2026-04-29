@@ -1076,6 +1076,19 @@ html { -webkit-text-size-adjust: 100%; }
         <span>Tables</span>
         <span id="db-table-count" style="font-weight:400">—</span>
       </div>
+      <!-- DB source toggle -->
+      <div style="display:flex;gap:4px;padding:8px 10px 4px;border-bottom:1px solid var(--line);">
+        <button id="db-toggle-local"
+          onclick="dbSetTarget('local')"
+          style="flex:1;padding:4px 6px;border-radius:6px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font:600 10px var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">
+          ▤ Local DB
+        </button>
+        <button id="db-toggle-remote"
+          onclick="dbSetTarget('remote')"
+          style="flex:1;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--text-3);font:600 10px var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">
+          ⇄ Remote DB
+        </button>
+      </div>
       <div class="db-tables-list" id="db-tables-list">
         <div class="db-empty" style="height:120px">
           <p>Loading…</p>
@@ -2732,6 +2745,28 @@ let _dbData      = [];
 let _dbPage      = 0;
 let _dbQueryMs   = 0;
 let _dbInitDone  = false;
+let _dbTarget    = 'local'; // 'local' | 'remote'
+
+function dbSetTarget(target) {
+  _dbTarget   = target;
+  _dbInitDone = false; // force reload on next switch
+  // Update toggle button styles
+  const localBtn  = document.getElementById('db-toggle-local');
+  const remoteBtn = document.getElementById('db-toggle-remote');
+  if (target === 'local') {
+    localBtn.style.cssText  += ';border-color:var(--amber);background:var(--amber-dim);color:var(--amber);';
+    remoteBtn.style.cssText += ';border-color:var(--line);background:transparent;color:var(--text-3);';
+  } else {
+    remoteBtn.style.cssText += ';border-color:var(--amber);background:var(--amber-dim);color:var(--amber);';
+    localBtn.style.cssText  += ';border-color:var(--line);background:transparent;color:var(--text-3);';
+  }
+  document.getElementById('db-results-area').innerHTML =
+    `<div class="db-empty" style="height:100%"><div class="db-empty-icon">⬡</div>
+     <p>Switched to ${target === 'remote' ? 'Remote' : 'Local'} DB — select a table or run a query.</p></div>`;
+  document.getElementById('db-pagination').style.display = 'none';
+  document.getElementById('db-export-btn').style.display = 'none';
+  dbLoadTables();
+}
 
 function dbInit() {
   if (!WRITE_PIN) {
@@ -2745,10 +2780,11 @@ function dbInit() {
 }
 
 async function dbLoadTables() {
-  const listEl = document.getElementById('db-tables-list');
+  const listEl   = document.getElementById('db-tables-list');
+  const endpoint = _dbTarget === 'remote' ? '/api/remote-db-tables' : '/api/db-tables';
   listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>Loading…</p></div>';
   try {
-    const res = await fetch(API_BASE + '/api/db-tables', {
+    const res = await fetch(API_BASE + endpoint, {
       headers: { Authorization: 'Bearer ' + WRITE_PIN }
     });
     const data = await res.json();
@@ -2783,10 +2819,11 @@ async function dbRunQuery() {
   if (!sql) return;
   if (!WRITE_PIN) { toast('Login required to run queries', 'error'); return; }
 
+  const endpoint = _dbTarget === 'remote' ? '/api/remote-db-query' : '/api/db-query';
   dbShowLoading();
   const t0 = performance.now();
   try {
-    const res = await fetch(API_BASE + '/api/db-query', {
+    const res = await fetch(API_BASE + endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
       body: JSON.stringify({ sql }),
