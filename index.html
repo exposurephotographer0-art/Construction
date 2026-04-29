@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#f4f5f7">
-<title>Cage Construction — QR Tracker</title>
+<title>Cage Traveller — QR Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
@@ -216,7 +216,37 @@ body{display:flex;flex-direction:column;overflow:hidden;}
 .ftag-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:3px;border:1px solid rgba(0,0,0,.15);}
 .cage-card-meta{display:none;} /* shown only on mobile */
 
-/* ── Detail Panel ── */
+/* ── Detail Panel Resize Handle ── */
+.detail-resize-handle {
+  position: absolute;
+  left: -4px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.detail-resize-handle::after {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 40px;
+  border-radius: 2px;
+  background: var(--line-mid);
+  transition: background .15s;
+}
+.detail-resize-handle:hover::after,
+.detail-resize-handle.dragging::after {
+  background: var(--amber);
+}
+@media (max-width: 640px) {
+  .detail-resize-handle { display: none; }
+}
+
+
 .detail-overlay{
   position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;
   display:flex;align-items:stretch;justify-content:flex-end;
@@ -947,9 +977,9 @@ html { -webkit-text-size-adjust: 100%; }
 
 <!-- ── Header ── -->
 <div class="header">
-  <div class="header-mark">CC</div>
+  <div class="header-mark">CT</div>
   <div class="header-text">
-    <div class="header-title">Cage Construction</div>
+    <div class="header-title">Cage Traveller</div>
     <div class="header-sub">QR Tracker</div>
   </div>
   <div class="header-pill" id="cage-count-pill">—</div>
@@ -1010,7 +1040,7 @@ html { -webkit-text-size-adjust: 100%; }
 <!-- ── Tab Nav ── -->
 <nav class="tab-nav">
   <button class="tab-btn active" id="tab-btn-cages" onclick="switchTab('cages')">
-    <span class="tab-icon">⬡</span> Cage Tracker
+    <span class="tab-icon">⬡</span> Cage Traveller
   </button>
   <button class="tab-btn" id="tab-btn-db" onclick="switchTab('db')">
     <span class="tab-icon">🗄</span> Database
@@ -1165,7 +1195,7 @@ html { -webkit-text-size-adjust: 100%; }
 </div><!-- /#tab-panel-db -->
 <div class="detail-overlay" id="detail-overlay" onclick="handleOverlayClick(event)">
   <div class="detail-panel">
-    <div class="fdp-header">
+    <div class="detail-resize-handle" id="detail-resize-handle"></div>
       <div>
         <div class="fdp-name" id="fdp-name">—</div>
         <div class="fdp-id" id="fdp-id"></div>
@@ -1513,6 +1543,12 @@ async function doLoginAuth() {
       closeLoginModal();
       _syncLoginUI();
       toast('Logged in ✓', 'success');
+      // If a cage detail panel is open, switch to edit mode immediately
+      if (FDP_CAGE_ID) {
+        FDP_EDIT_MODE = true;
+        document.getElementById('fdp-save-btn').style.display = '';
+        renderDetailBody();
+      }
     } else {
       // Show name step
       document.getElementById('login-step-pin').classList.add('hidden');
@@ -1544,6 +1580,12 @@ function doLoginNameStep() {
   closeLoginModal();
   _syncLoginUI();
   toast('Logged in as ' + TAGGER_NAME + ' ✓', 'success');
+  // If a cage detail panel is open, switch to edit mode immediately
+  if (FDP_CAGE_ID) {
+    FDP_EDIT_MODE = true;
+    document.getElementById('fdp-save-btn').style.display = '';
+    renderDetailBody();
+  }
 }
 
 function doLogout() {
@@ -1603,6 +1645,57 @@ async function refreshData() {
   if (btn) { btn.textContent = '↺ Refresh'; btn.disabled = false; }
   toast('Refreshed ✓', 'success');
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESIZABLE DETAIL PANEL
+// ═══════════════════════════════════════════════════════════════════════
+(function initResizePanel() {
+  const MIN_W = 300;
+  const MAX_W = Math.min(900, window.innerWidth - 60);
+
+  let _dragging = false;
+  let _startX   = 0;
+  let _startW   = 0;
+
+  function getPanel()  { return document.querySelector('.detail-panel'); }
+  function getHandle() { return document.getElementById('detail-resize-handle'); }
+
+  function onMouseDown(e) {
+    if (window.innerWidth <= 640) return; // disabled on mobile
+    _dragging = true;
+    _startX   = e.clientX;
+    _startW   = getPanel().offsetWidth;
+    getHandle().classList.add('dragging');
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  }
+
+  function onMouseMove(e) {
+    if (!_dragging) return;
+    const delta = _startX - e.clientX; // drag left = wider
+    const newW  = Math.min(MAX_W, Math.max(MIN_W, _startW + delta));
+    getPanel().style.width = newW + 'px';
+  }
+
+  function onMouseUp() {
+    if (!_dragging) return;
+    _dragging = false;
+    getHandle().classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const h = getHandle();
+    if (h) h.addEventListener('mousedown', onMouseDown);
+  });
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup',   onMouseUp);
+})();
+
+
 
 // ═══════════════════════════════════════════════════════════════════════
 // TABLE RENDER
@@ -2112,8 +2205,44 @@ function renderDetailBody(cage) {
       </div>`;
   }
 
+  // ── Comments summary — shown at top if any comments exist ──────────────
+  const AREA_COMMENT_KEYS = [
+    { key: 'goods_in',    label: 'Goods In' },
+    { key: 'aux_bay',     label: 'Aux Bay' },
+    { key: 'pallet_line', label: 'Pallet Line' },
+    { key: 'station_3d',  label: '3D Station' },
+    { key: 'goods_out',   label: 'Goods Out' },
+  ];
+  const allComments = [];
+  MESH_NAMES.forEach(m => {
+    const ac = FDP_DRAFT_MESH_AREA_COMMENTS[m] || {};
+    AREA_COMMENT_KEYS.forEach(a => {
+      if (ac[a.key] && ac[a.key].trim()) {
+        allComments.push({ source: m + ' – ' + a.label, text: ac[a.key].trim() });
+      }
+    });
+  });
+  FACE_NAMES.forEach(f => {
+    const c = (FDP_DRAFT_FACE_COMMENTS[f] || '').trim();
+    if (c) allComments.push({ source: FACE_LABELS[f] || f, text: c });
+  });
+  let commentsSummaryHtml = '';
+  if (allComments.length) {
+    const items = allComments.map(c => `
+      <div style="padding:9px 12px;border-bottom:1px solid var(--line)">
+        <div style="font:700 9px var(--mono);color:var(--amber);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">${esc(c.source)}</div>
+        <div style="font:400 11px var(--mono);color:var(--text-2);line-height:1.6">${esc(c.text)}</div>
+      </div>`).join('');
+    commentsSummaryHtml = `
+      <div class="fdp-section-label">💬 Comments <span style="font:400 10px var(--mono);color:var(--text-3);text-transform:none;letter-spacing:0">(${allComments.length})</span></div>
+      <div style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px">
+        ${items}
+      </div>`;
+  }
+
   document.getElementById('fdp-body').innerHTML = `
     ${meshBanner}
+    ${commentsSummaryHtml}
     ${tagSummaryHtml}
     ${lockBanner}
     ${propsHtml}
