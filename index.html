@@ -1089,6 +1089,24 @@ html { -webkit-text-size-adjust: 100%; }
           ⇄ Remote DB
         </button>
       </div>
+      <!-- Remote DB credentials (shown only when Remote DB is active) -->
+      <div id="db-remote-creds" style="display:none;flex-direction:column;gap:6px;padding:10px;border-bottom:1px solid var(--line);background:var(--surface-2);">
+        <div style="font:600 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px;">Remote Database</div>
+        <input id="db-remote-account-id"
+          placeholder="Account ID (32-char hex)"
+          style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface-1);color:var(--text-1);font:400 11px var(--mono);outline:none;"
+          oninput="dbSaveRemoteCreds()"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'" />
+        <input id="db-remote-db-uuid"
+          placeholder="Database UUID"
+          style="width:100%;padding:6px 8px;border-radius:6px;border:1px solid var(--line);background:var(--surface-1);color:var(--text-1);font:400 11px var(--mono);outline:none;"
+          oninput="dbSaveRemoteCreds()"
+          onfocus="this.style.borderColor='var(--amber)'" onblur="this.style.borderColor='var(--line)'" />
+        <button onclick="dbLoadTables()"
+          style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font:700 10px var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">
+          ⇄ Connect
+        </button>
+      </div>
       <div class="db-tables-list" id="db-tables-list">
         <div class="db-empty" style="height:120px">
           <p>Loading…</p>
@@ -2747,25 +2765,53 @@ let _dbQueryMs   = 0;
 let _dbInitDone  = false;
 let _dbTarget    = 'local'; // 'local' | 'remote'
 
+function dbSaveRemoteCreds() {
+  const accountId = document.getElementById('db-remote-account-id').value.trim();
+  const dbUuid    = document.getElementById('db-remote-db-uuid').value.trim();
+  try { localStorage.setItem('remoteDbAccountId', accountId); } catch(e) {}
+  try { localStorage.setItem('remoteDbUuid',      dbUuid);    } catch(e) {}
+}
+
+function dbLoadRemoteCreds() {
+  try {
+    const a = localStorage.getItem('remoteDbAccountId') || '';
+    const u = localStorage.getItem('remoteDbUuid')      || '';
+    document.getElementById('db-remote-account-id').value = a;
+    document.getElementById('db-remote-db-uuid').value    = u;
+  } catch(e) {}
+}
+
+function dbGetRemoteCreds() {
+  return {
+    accountId: document.getElementById('db-remote-account-id').value.trim(),
+    dbUuid:    document.getElementById('db-remote-db-uuid').value.trim(),
+  };
+}
+
 function dbSetTarget(target) {
   _dbTarget   = target;
-  _dbInitDone = false; // force reload on next switch
-  // Update toggle button styles
+  _dbInitDone = false;
   const localBtn  = document.getElementById('db-toggle-local');
   const remoteBtn = document.getElementById('db-toggle-remote');
+  const credsEl   = document.getElementById('db-remote-creds');
   if (target === 'local') {
     localBtn.style.cssText  += ';border-color:var(--amber);background:var(--amber-dim);color:var(--amber);';
     remoteBtn.style.cssText += ';border-color:var(--line);background:transparent;color:var(--text-3);';
+    credsEl.style.display    = 'none';
   } else {
     remoteBtn.style.cssText += ';border-color:var(--amber);background:var(--amber-dim);color:var(--amber);';
     localBtn.style.cssText  += ';border-color:var(--line);background:transparent;color:var(--text-3);';
+    credsEl.style.display    = 'flex';
+    dbLoadRemoteCreds();
   }
   document.getElementById('db-results-area').innerHTML =
     `<div class="db-empty" style="height:100%"><div class="db-empty-icon">⬡</div>
-     <p>Switched to ${target === 'remote' ? 'Remote' : 'Local'} DB — select a table or run a query.</p></div>`;
+     <p>${target === 'remote' ? 'Enter the Account ID and Database UUID above, then click Connect.' : 'Select a table or write a SQL query and hit Run.'}</p></div>`;
   document.getElementById('db-pagination').style.display = 'none';
   document.getElementById('db-export-btn').style.display = 'none';
-  dbLoadTables();
+  document.getElementById('db-tables-list').innerHTML = '<div class="db-empty" style="height:80px"><p>—</p></div>';
+  document.getElementById('db-table-count').textContent = '—';
+  if (target === 'local') dbLoadTables();
 }
 
 function dbInit() {
@@ -2780,21 +2826,49 @@ function dbInit() {
 }
 
 async function dbLoadTables() {
-  const listEl   = document.getElementById('db-tables-list');
-  const endpoint = _dbTarget === 'remote' ? '/api/remote-db-tables' : '/api/db-tables';
+  const listEl = document.getElementById('db-tables-list');
+
+  if (_dbTarget === 'remote') {
+    const { accountId, dbUuid } = dbGetRemoteCreds();
+    if (!accountId || !dbUuid) {
+      listEl.innerHTML = '<div class="db-error">Enter Account ID and Database UUID above first.</div>';
+      return;
+    }
+    listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>Connecting…</p></div>';
+    try {
+      const res = await fetch(API_BASE + '/api/remote-db-tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+        body: JSON.stringify({ accountId, dbUuid }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed');
+      const tables = data.tables || [];
+      document.getElementById('db-table-count').textContent = tables.length;
+      if (!tables.length) { listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>No tables found.</p></div>'; return; }
+      listEl.innerHTML = tables.map(t => `
+        <div class="db-table-item" id="dbtbl-${CSS.escape(t.name)}" onclick="dbSelectTable('${t.name.replace(/'/g,"\\'")}')">
+          <span>▤</span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${t.name}</span>
+          ${t.rows !== null ? `<span class="db-table-rows">${t.rows}</span>` : ''}
+        </div>`).join('');
+    } catch(e) {
+      listEl.innerHTML = `<div class="db-error">Failed: ${e.message}</div>`;
+    }
+    return;
+  }
+
+  // Local DB
   listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>Loading…</p></div>';
   try {
-    const res = await fetch(API_BASE + endpoint, {
+    const res = await fetch(API_BASE + '/api/db-tables', {
       headers: { Authorization: 'Bearer ' + WRITE_PIN }
     });
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || 'Failed');
     const tables = data.tables || [];
     document.getElementById('db-table-count').textContent = tables.length;
-    if (!tables.length) {
-      listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>No tables found.</p></div>';
-      return;
-    }
+    if (!tables.length) { listEl.innerHTML = '<div class="db-empty" style="height:80px"><p>No tables found.</p></div>'; return; }
     listEl.innerHTML = tables.map(t => `
       <div class="db-table-item" id="dbtbl-${CSS.escape(t.name)}" onclick="dbSelectTable('${t.name.replace(/'/g,"\\'")}')">
         <span>▤</span>
@@ -2819,15 +2893,25 @@ async function dbRunQuery() {
   if (!sql) return;
   if (!WRITE_PIN) { toast('Login required to run queries', 'error'); return; }
 
-  const endpoint = _dbTarget === 'remote' ? '/api/remote-db-query' : '/api/db-query';
   dbShowLoading();
   const t0 = performance.now();
   try {
-    const res = await fetch(API_BASE + endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
-      body: JSON.stringify({ sql }),
-    });
+    let res;
+    if (_dbTarget === 'remote') {
+      const { accountId, dbUuid } = dbGetRemoteCreds();
+      if (!accountId || !dbUuid) { dbShowError('Enter Account ID and Database UUID in the sidebar first.'); return; }
+      res = await fetch(API_BASE + '/api/remote-db-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+        body: JSON.stringify({ accountId, dbUuid, sql }),
+      });
+    } else {
+      res = await fetch(API_BASE + '/api/db-query', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+        body: JSON.stringify({ sql }),
+      });
+    }
     const data = await res.json();
     _dbQueryMs = Math.round(performance.now() - t0);
     if (!data.ok) {
