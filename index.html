@@ -1063,10 +1063,28 @@ html { -webkit-text-size-adjust: 100%; }
 <!-- ── Database Explorer Tab ── -->
 <div class="tab-panel" id="tab-panel-db">
   <div id="db-lock-screen" class="db-lock-banner" style="display:none">
-    <span style="font-size:22px">🔒</span>
-    <div>
-      <strong>Write PIN Required</strong>
-      The Database tab requires write access. Use the Login button in the header to unlock.
+    <span style="font-size:26px">🔒</span>
+    <div style="flex:1">
+      <strong>Admin PIN Required</strong>
+      The Database tab is protected. Enter your admin PIN to continue.
+      <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input id="db-admin-pin-input" type="password" placeholder="Admin PIN"
+          style="padding:7px 12px;border-radius:7px;border:1px solid var(--line-mid);
+                 background:var(--surface-1);color:var(--text-1);font:400 14px var(--mono);
+                 width:160px;outline:none;letter-spacing:.15em;"
+          onkeydown="if(event.key==='Enter')dbAdminLogin()"
+          onfocus="this.style.borderColor='var(--amber)'"
+          onblur="this.style.borderColor='var(--line-mid)'" />
+        <button onclick="dbAdminLogin()"
+          style="padding:7px 18px;border-radius:7px;border:1px solid var(--amber);
+                 background:var(--amber-dim);color:var(--amber);font:700 12px var(--mono);
+                 cursor:pointer;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;">
+          Unlock
+        </button>
+      </div>
+      <div id="db-admin-error"
+        style="margin-top:8px;font-size:12px;color:#f87171;display:none;font-family:var(--mono)">
+      </div>
     </div>
   </div>
   <div class="db-layout" id="db-layout" style="display:none">
@@ -1533,6 +1551,8 @@ function doLogout() {
   ACCESS_LEVEL = 'read';
   TAGGER_NAME  = '';
   FDP_EDIT_MODE = false;
+  _dbAdminUnlocked = false;  // re-lock the DB tab on logout
+  _dbInitDone = false;
   localStorage.removeItem(LS_WRITE_PIN);
   localStorage.removeItem('cc_tagger_name');
   _syncLoginUI();
@@ -2822,15 +2842,65 @@ function dbSetTarget(target) {
   if (target === 'local') dbLoadTables();
 }
 
+let _dbAdminUnlocked = false;
+
 function dbInit() {
-  if (!WRITE_PIN) {
+  if (!_dbAdminUnlocked) {
     document.getElementById('db-lock-screen').style.display = 'flex';
     document.getElementById('db-layout').style.display = 'none';
+    // Focus the PIN input after a short delay so the element is visible
+    setTimeout(() => {
+      const inp = document.getElementById('db-admin-pin-input');
+      if (inp) inp.focus();
+    }, 80);
     return;
   }
   document.getElementById('db-lock-screen').style.display = 'none';
   document.getElementById('db-layout').style.display = 'grid';
   if (!_dbInitDone) { _dbInitDone = true; dbLoadTables(); }
+}
+
+async function dbAdminLogin() {
+  const inp    = document.getElementById('db-admin-pin-input');
+  const errEl  = document.getElementById('db-admin-error');
+  const pin    = inp ? inp.value.trim() : '';
+  if (!pin) return;
+
+  // Disable input while checking
+  const btn = inp.parentElement.querySelector('button');
+  inp.disabled = true;
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  errEl.style.display = 'none';
+
+  try {
+    const res = await fetch(API_BASE + '/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    const data = await res.json();
+
+    if (data.locked) {
+      const secs = data.remaining || 300;
+      errEl.textContent = `Too many attempts. Try again in ${secs}s.`;
+      errEl.style.display = 'block';
+    } else if (data.ok && data.level === 'admin_unlock') {
+      _dbAdminUnlocked = true;
+      inp.value = '';
+      dbInit();
+    } else {
+      errEl.textContent = data.error || 'Incorrect PIN. Please try again.';
+      errEl.style.display = 'block';
+      inp.value = '';
+      setTimeout(() => inp.focus(), 50);
+    }
+  } catch(e) {
+    errEl.textContent = 'Connection error. Please try again.';
+    errEl.style.display = 'block';
+  } finally {
+    inp.disabled = false;
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock'; }
+  }
 }
 
 async function dbLoadTables() {
