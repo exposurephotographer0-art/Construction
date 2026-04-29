@@ -1106,6 +1106,14 @@ html { -webkit-text-size-adjust: 100%; }
           style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--amber);background:var(--amber-dim);color:var(--amber);font:700 10px var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;">
           ⇄ Connect
         </button>
+        <!-- Sync analyses button -->
+        <div style="height:1px;background:var(--line);margin:2px 0;"></div>
+        <div style="font:600 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.1em;">Sync to Local</div>
+        <button id="db-sync-btn" onclick="dbSyncAnalyses()"
+          style="width:100%;padding:6px;border-radius:6px;border:1px solid var(--line-mid);background:transparent;color:var(--text-2);font:700 10px var(--mono);cursor:pointer;text-transform:uppercase;letter-spacing:.06em;transition:all .12s;">
+          ↻ Sync Analyses Table
+        </button>
+        <div id="db-sync-status" style="font:400 10px var(--mono);color:var(--text-3);min-height:14px;text-align:center;"></div>
       </div>
       <div class="db-tables-list" id="db-tables-list">
         <div class="db-empty" style="height:120px">
@@ -3009,6 +3017,48 @@ function dbExportCSV() {
   a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
   a.download = `db-export-${Date.now()}.csv`;
   a.click();
+}
+
+async function dbSyncAnalyses() {
+  const { accountId, dbUuid } = dbGetRemoteCreds();
+  if (!accountId || !dbUuid) {
+    dbSetSyncStatus('Enter Account ID and Database UUID first.', 'error');
+    return;
+  }
+  const btn = document.getElementById('db-sync-btn');
+  btn.disabled = true;
+  btn.textContent = '↻ Syncing…';
+  dbSetSyncStatus('Fetching remote schema and rows…', 'info');
+  try {
+    const res = await fetch(API_BASE + '/api/sync-analyses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + WRITE_PIN },
+      body: JSON.stringify({ accountId, dbUuid }),
+    });
+    const data = await res.json();
+    if (!data.ok) {
+      dbSetSyncStatus('✗ ' + (data.error || 'Sync failed'), 'error');
+    } else {
+      const now = new Date().toLocaleTimeString();
+      dbSetSyncStatus(`✓ ${data.synced} rows — ${now}`, 'ok');
+      // If currently viewing the local analyses table, auto-refresh it
+      const currentQuery = document.getElementById('db-query-input').value;
+      if (_dbTarget === 'local' && currentQuery.toLowerCase().includes('analyses')) {
+        dbRunQuery();
+      }
+    }
+  } catch(e) {
+    dbSetSyncStatus('✗ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '↻ Sync Analyses Table';
+  }
+}
+
+function dbSetSyncStatus(msg, type) {
+  const el = document.getElementById('db-sync-status');
+  el.textContent = msg;
+  el.style.color = type === 'ok' ? '#22c55e' : type === 'error' ? '#f87171' : 'var(--text-3)';
 }
 
 function dbShowLoading() {
