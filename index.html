@@ -1771,59 +1771,62 @@ function renderTable() {
       ? activeCageTags.map(t => `<span class="ftag-dot" style="background:${tagDotBg(t.color,t.color2)}" title="${t.label}"></span>`).join('')
       : '<span style="color:var(--text-3)">—</span>';
 
-    // Mesh summary dots
-    const allMeshes = [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => meshData[m] && meshData[m] !== 'none')];
+    // Mesh weights from analyses — compute FIRST so we can drive the meshes column too
+    const layerWts = MESH_WEIGHTS[(c.name || '').trim()] || null;
+    const MESH_ORDER = ['N1A','F1A','B1A','T1A','N3A','N5A','N7A','F3A','F5A','F7A'];
+
+    // Mesh Weights column — badge per mesh with weight
+    const meshWtBadges = layerWts
+      ? MESH_ORDER
+          .filter(m => Object.prototype.hasOwnProperty.call(layerWts, m))
+          .map(m => {
+            const wtKg = parseFloat(layerWts[m]);
+            const label = Number.isFinite(wtKg) ? (wtKg / 1000).toFixed(2) + 't' : '?';
+            return `<span title="${m}: ${wtKg}kg"
+              style="display:inline-flex;align-items:center;gap:3px;
+              background:var(--surface-3);border:1px solid var(--line);border-radius:4px;
+              padding:2px 6px;margin-right:3px;margin-bottom:2px;white-space:nowrap">
+              <span style="font:700 10px var(--mono);color:var(--text-1)">${m}</span>
+              <span style="font:400 9px var(--mono);color:var(--text-3)">${label}</span>
+            </span>`;
+          }).join('')
+      : '';
+
+    // Meshes column — tag-state dots, driven by layer_weights_JSON keys (not REQUIRED_MESHES)
+    const allMeshes = layerWts
+      ? MESH_ORDER.filter(m => Object.prototype.hasOwnProperty.call(layerWts, m))
+      : MESH_ORDER.filter(m => REQUIRED_MESHES.includes(m)); // fallback if no analyses data
     const meshDots = allMeshes.map(m => {
-      const state = meshData[m] || (REQUIRED_MESHES.includes(m) ? 'none' : null);
-      if (!state) return '';
+      const state = meshData[m] || 'none';
       const color = state === 'blue' ? '#3b82f6' : '#555e73';
       const color2 = state === 'blue_red' ? '#ef4444' : null;
       return `<span title="${m}: ${state === 'none' ? 'no tag' : state === 'blue' ? 'Blue' : 'Blue & Red'}"
         style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:18px;border-radius:3px;
-        background:${color2 ? tagDotBg(color,color2) : color+'18'};border:1px solid ${color}55;font:700 9px var(--mono);color:${color2 ? '#fff' : color};margin-right:2px">${m}</span>`;
+        background:${color2 ? tagDotBg(color,color2) : color+'18'};border:1px solid ${color}55;
+        font:700 9px var(--mono);color:${color2 ? '#fff' : color};margin-right:2px">${m}</span>`;
     }).join('');
 
-    // Mesh weights from analyses layer_weights_JSON
-    const layerWts = MESH_WEIGHTS[(c.name || '').trim()] || {};
-    const meshWtBadges = Object.entries(layerWts)
-      .filter(([, v]) => v != null)
-      .sort(([a], [b]) => {
-        // Sort by canonical mesh order
-        const order = ['N1A','F1A','B1A','T1A','N3A','N5A','N7A','F3A','F5A','F7A'];
-        return (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99);
-      })
-      .map(([mesh, wt]) => {
-        const wtKg = typeof wt === 'number' ? wt : parseFloat(wt);
-        const label = Number.isFinite(wtKg) ? (wtKg / 1000).toFixed(2) + 't' : '?';
-        return `<span title="${mesh}: ${wtKg}kg" style="display:inline-flex;align-items:center;gap:3px;
-          background:var(--surface-3);border:1px solid var(--line);border-radius:4px;
-          padding:2px 6px;margin-right:3px;margin-bottom:2px;white-space:nowrap">
-          <span style="font:700 10px var(--mono);color:var(--text-1)">${mesh}</span>
-          <span style="font:400 9px var(--mono);color:var(--text-3)">${label}</span>
-        </span>`;
-      }).join('');
-
-    const dimCells = `
-      <td style="color:var(--text-2);font:400 12px var(--mono)">${c.weight || '—'}</td>
-      <td style="white-space:normal;line-height:1.6">${meshWtBadges || '<span style="color:var(--text-3)">—</span>'}</td>`;
     const customCells = CUSTOM_FIELDS.map(f =>
       `<td>${esc(customFields[f.key] || '—')}</td>`
     ).join('');
 
     return `<tr onclick="openDetail('${c.id}')">
-      <td style="flex:1 1 100%;display:flex;flex-direction:column;gap:4px">
+      <td style="vertical-align:middle">
         <span class="cage-ref-cell">${esc(c.name)}</span>
-        <span class="cage-card-meta">
+        <span class="cage-card-meta" style="display:block;margin-top:3px">
           <span style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</span>
           ${cageLocation ? `<span style="color:var(--text-3);font:400 11px var(--mono)"> · ${esc(cageLocation)}</span>` : ''}
           ${meshDots ? `<span style="margin-left:6px">${meshDots}</span>` : ''}
           ${activeCageTags.length ? `<span style="margin-left:4px">${cageTagDots}</span>` : ''}
         </span>
       </td>
-      ${dimCells}
+      <td style="color:var(--text-2);font:400 12px var(--mono);vertical-align:middle">${c.weight || '—'}</td>
+      <td style="white-space:normal;overflow:visible;max-width:none;vertical-align:middle;padding:6px 12px">
+        ${meshWtBadges || '<span style="color:var(--text-3)">—</span>'}
+      </td>
       <td class="hide-mobile" style="color:var(--text-2);font:400 11px var(--mono)">${esc(locLabel(c))}</td>
       <td class="hide-mobile" style="color:var(--text-2);font:400 11px var(--mono);max-width:120px;overflow:hidden;text-overflow:ellipsis">${esc(cageLocation) || '<span style="color:var(--text-3)">—</span>'}</td>
-      <td class="hide-mobile" style="white-space:nowrap">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
+      <td class="hide-mobile" style="white-space:normal;overflow:visible;max-width:none;padding:6px 12px">${meshDots || '<span style="color:var(--text-3)">—</span>'}</td>
       <td class="hide-mobile">${cageTagDots}</td>
       ${customCells}
       <td class="hide-mobile"></td>
@@ -1888,16 +1891,30 @@ function renderDetailBody(cage) {
     </div>`;
   })() : '';
 
-  // Props — only shown to write-level users
-  const propsHtml = canSeeDetails ? `
-    <div class="fdp-props">
-      ${[
-        { label:'Width',  value: cage.width  ? cage.width  + ' m' : '—' },
-        { label:'Height', value: cage.height ? cage.height + ' m' : '—' },
-        { label:'Length', value: cage.length ? cage.length + ' m' : '—' },
-        { label:'Cage Weight', value: cage.weight ? cage.weight + ' t' : '—' },
-      ].map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
-    </div>` : '';
+  // Props — Cage Weight always visible; W/H/L removed
+  const layerWtsForProps = MESH_WEIGHTS[(cage.name || '').trim()] || null;
+  const MESH_ORDER_PANEL = ['N1A','F1A','B1A','T1A','N3A','N5A','N7A','F3A','F5A','F7A'];
+  const meshWeightRows = layerWtsForProps
+    ? MESH_ORDER_PANEL
+        .filter(m => Object.prototype.hasOwnProperty.call(layerWtsForProps, m))
+        .map(m => {
+          const wtKg = parseFloat(layerWtsForProps[m]);
+          const label = Number.isFinite(wtKg) ? (wtKg / 1000).toFixed(3) + ' t' : '—';
+          return `<div class="fdp-prop">
+            <div class="fdp-prop-label">${m}</div>
+            <div class="fdp-prop-value">${label}</div>
+          </div>`;
+        }).join('')
+    : '';
+
+  const propsHtml = `
+    <div class="fdp-props" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
+      <div class="fdp-prop">
+        <div class="fdp-prop-label">Cage Weight</div>
+        <div class="fdp-prop-value">${cage.weight ? cage.weight + ' t' : '—'}</div>
+      </div>
+      ${meshWeightRows}
+    </div>`;
 
   // Location
   const locationHtml = `
