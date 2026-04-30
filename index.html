@@ -1328,6 +1328,7 @@ let TAGGER_NAME  = '';   // person's name recorded with tag changes
 let ALL_CAGES        = [];
 let FACTORY_DATA     = {};    // cage_id → {tags:{}, custom_fields:{}}
 let CUSTOM_FIELDS    = [];    // [{name, type, key}]
+let MESH_WEIGHTS     = {};    // cage name (production_number) → { N1A: kg, F1A: kg, … }
 
 let FDP_CAGE_ID      = null;
 let FDP_DRAFT_TAGS   = {};
@@ -1622,18 +1623,21 @@ async function loadData() {
   try {
     // Use write PIN for auth if logged in, otherwise send no auth (public read)
     const authHeader = WRITE_PIN ? { Authorization: 'Bearer ' + WRITE_PIN } : {};
-    const [stateRes, fdRes, fsRes] = await Promise.all([
+    const [stateRes, fdRes, fsRes, mwRes] = await Promise.all([
       fetch(API_BASE + '/api/state',            { headers: authHeader }),
       fetch(API_BASE + '/api/factory-data',     { headers: authHeader }),
       fetch(API_BASE + '/api/factory-settings', { headers: authHeader }),
+      fetch(API_BASE + '/api/mesh-weights'),   // always public — no auth header needed
     ]);
     const state = stateRes.ok ? await stateRes.json() : { cages: [] };
     const fd    = fdRes.ok    ? await fdRes.json()    : { data: {} };
     const fs    = fsRes.ok    ? await fsRes.json()    : { customFields: [] };
+    const mw    = mwRes.ok    ? await mwRes.json()    : { weights: {} };
 
     ALL_CAGES     = state.cages || [];
     FACTORY_DATA  = fd.data || {};
     CUSTOM_FIELDS = fs.customFields || [];
+    MESH_WEIGHTS  = mw.weights || {};
 
     renderTable();
     _maybeOpenQRCage();
@@ -1739,18 +1743,16 @@ function renderTable() {
   // thead
   const thead = document.getElementById('cage-thead');
   const customCols = CUSTOM_FIELDS.map(f => `<th>${esc(f.name)}</th>`).join('');
-  const dimCols = canSeeDetails
-    ? `<th>W (m)</th><th>H (m)</th><th>L (m)</th><th>Weight (t)</th>`
-    : '';
+  // Cage Weight + Mesh Weights are always shown (not gated by login)
   thead.innerHTML = `<tr>
-    <th>Cage</th>${dimCols}<th>Location</th><th>Cage Location</th><th>Meshes</th><th>Tags</th>
+    <th>Cage</th><th>Cage Weight (t)</th><th>Mesh Weights</th><th>Location</th><th>Cage Location</th><th>Meshes</th><th>Tags</th>
     ${customCols}
     <th class="add-th" onclick="openAddFieldModal()" title="Add column">+</th>
   </tr>`;
 
   // tbody
   const tbody = document.getElementById('cage-tbody');
-  const colCount = (canSeeDetails ? 4 : 0) + 5 + CUSTOM_FIELDS.length + 1;
+  const colCount = 2 + 5 + CUSTOM_FIELDS.length + 1;
   if (!filtered.length) {
     tbody.innerHTML = `<tr><td colspan="${colCount}" style="text-align:center;padding:40px;color:var(--text-3);font:400 12px var(--mono);">${(q||locFilter||tagFilter) ? 'No cages match filters' : 'No cages found'}</td></tr>`;
     return;
@@ -1781,9 +1783,29 @@ function renderTable() {
         background:${color2 ? tagDotBg(color,color2) : color+'18'};border:1px solid ${color}55;font:700 9px var(--mono);color:${color2 ? '#fff' : color};margin-right:2px">${m}</span>`;
     }).join('');
 
-    const dimCells = canSeeDetails
-      ? `<td>${c.width  || '—'}</td><td>${c.height || '—'}</td><td>${c.length || '—'}</td><td>${c.weight || '—'}</td>`
-      : '';
+    // Mesh weights from analyses layer_weights_JSON
+    const layerWts = MESH_WEIGHTS[c.name] || {};
+    const meshWtBadges = Object.entries(layerWts)
+      .filter(([, v]) => v != null)
+      .sort(([a], [b]) => {
+        // Sort by canonical mesh order
+        const order = ['N1A','F1A','B1A','T1A','N3A','N5A','N7A','F3A','F5A','F7A'];
+        return (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99);
+      })
+      .map(([mesh, wt]) => {
+        const wtKg = typeof wt === 'number' ? wt : parseFloat(wt);
+        const label = Number.isFinite(wtKg) ? (wtKg / 1000).toFixed(2) + 't' : '?';
+        return `<span title="${mesh}: ${wtKg}kg" style="display:inline-flex;align-items:center;gap:3px;
+          background:var(--surface-3);border:1px solid var(--line);border-radius:4px;
+          padding:2px 6px;margin-right:3px;margin-bottom:2px;white-space:nowrap">
+          <span style="font:700 10px var(--mono);color:var(--text-1)">${mesh}</span>
+          <span style="font:400 9px var(--mono);color:var(--text-3)">${label}</span>
+        </span>`;
+      }).join('');
+
+    const dimCells = `
+      <td style="color:var(--text-2);font:400 12px var(--mono)">${c.weight || '—'}</td>
+      <td style="white-space:normal;line-height:1.6">${meshWtBadges || '<span style="color:var(--text-3)">—</span>'}</td>`;
     const customCells = CUSTOM_FIELDS.map(f =>
       `<td>${esc(customFields[f.key] || '—')}</td>`
     ).join('');
@@ -1873,7 +1895,7 @@ function renderDetailBody(cage) {
         { label:'Width',  value: cage.width  ? cage.width  + ' m' : '—' },
         { label:'Height', value: cage.height ? cage.height + ' m' : '—' },
         { label:'Length', value: cage.length ? cage.length + ' m' : '—' },
-        { label:'Weight', value: cage.weight ? cage.weight + ' t' : '—' },
+        { label:'Cage Weight', value: cage.weight ? cage.weight + ' t' : '—' },
       ].map(p => `<div class="fdp-prop"><div class="fdp-prop-label">${p.label}</div><div class="fdp-prop-value">${p.value}</div></div>`).join('')}
     </div>` : '';
 
@@ -1915,9 +1937,17 @@ function renderDetailBody(cage) {
     </div>`;
 
   // Mesh section
+  // Use layer_weights_JSON to know which meshes actually exist for this cage.
+  // Fall back to MESH_NAMES if no analyses data is available yet.
+  const cage_name = cage.name || '';
+  const layerWtsForCage = MESH_WEIGHTS[cage_name] || null;
+  const availableMeshes = layerWtsForCage
+    ? MESH_NAMES.filter(m => Object.prototype.hasOwnProperty.call(layerWtsForCage, m))
+    : MESH_NAMES; // fallback: show all if no analyses data
+
   const meshesToShow = FDP_EDIT_MODE
-    ? MESH_NAMES
-    : [...REQUIRED_MESHES, ...OPTIONAL_MESHES.filter(m => FDP_DRAFT_MESHES[m] && FDP_DRAFT_MESHES[m] !== 'none')];
+    ? availableMeshes
+    : availableMeshes.filter(m => REQUIRED_MESHES.includes(m) || (FDP_DRAFT_MESHES[m] && FDP_DRAFT_MESHES[m] !== 'none'));
 
   const meshHtml = meshesToShow.map(m => {
     const current = FDP_DRAFT_MESHES[m] || 'none';
@@ -1955,6 +1985,11 @@ function renderDetailBody(cage) {
     ];
 
     if (!FDP_EDIT_MODE) {
+      // Mesh weight from layer_weights_JSON
+      const meshWtKg = layerWtsForCage ? layerWtsForCage[m] : null;
+      const meshWtLabel = (meshWtKg != null && Number.isFinite(parseFloat(meshWtKg)))
+        ? `<span style="font:400 10px var(--mono);color:var(--text-3);margin-left:6px">${(parseFloat(meshWtKg)/1000).toFixed(2)}t</span>`
+        : '';
       const grnHtml = GRN_FIELDS.filter(g => grns[g.key]).map(g =>
         `<div style="display:flex;align-items:baseline;gap:6px">
           <span style="font:400 9px var(--mono);color:var(--text-3);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap">${g.label}:</span>
@@ -1972,6 +2007,7 @@ function renderDetailBody(cage) {
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${grnHtml||areaCommentHtml?'10px':'0'}">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
             <span style="font:700 13px var(--mono);color:${nameColor}">${m}</span>
+            ${meshWtLabel}
             ${scannedBadge}${optBadge}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
@@ -2021,6 +2057,9 @@ function renderDetailBody(cage) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
           <span style="font:700 13px var(--mono);color:${nameColor}">${m}</span>
+          ${layerWtsForCage && layerWtsForCage[m] != null
+            ? `<span style="font:400 10px var(--mono);color:var(--text-3)">${(parseFloat(layerWtsForCage[m])/1000).toFixed(2)}t</span>`
+            : ''}
           ${scannedBadge}${optBadge}
         </div>
         ${printBtn}
