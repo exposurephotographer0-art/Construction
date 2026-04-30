@@ -1784,7 +1784,7 @@ function renderTable() {
     }).join('');
 
     // Mesh weights from analyses layer_weights_JSON
-    const layerWts = MESH_WEIGHTS[c.name] || {};
+    const layerWts = MESH_WEIGHTS[(c.name || '').trim()] || {};
     const meshWtBadges = Object.entries(layerWts)
       .filter(([, v]) => v != null)
       .sort(([a], [b]) => {
@@ -1937,17 +1937,17 @@ function renderDetailBody(cage) {
     </div>`;
 
   // Mesh section
-  // Use layer_weights_JSON to know which meshes actually exist for this cage.
-  // Fall back to MESH_NAMES if no analyses data is available yet.
-  const cage_name = cage.name || '';
+  // layer_weights_JSON keys are the definitive list of which meshes exist for this cage.
+  // Trim cage name to guard against whitespace mismatches with production_number.
+  const cage_name = (cage.name || '').trim();
   const layerWtsForCage = MESH_WEIGHTS[cage_name] || null;
   const availableMeshes = layerWtsForCage
     ? MESH_NAMES.filter(m => Object.prototype.hasOwnProperty.call(layerWtsForCage, m))
-    : MESH_NAMES; // fallback: show all if no analyses data
+    : REQUIRED_MESHES; // fallback when analyses not yet synced: show the 4 standard meshes
 
-  const meshesToShow = FDP_EDIT_MODE
-    ? availableMeshes
-    : availableMeshes.filter(m => REQUIRED_MESHES.includes(m) || (FDP_DRAFT_MESHES[m] && FDP_DRAFT_MESHES[m] !== 'none'));
+  // Show all available meshes in edit mode; in read-only show all available (they're already
+  // filtered to those that exist in the JSON, so no extra REQUIRED_MESHES pass-through needed).
+  const meshesToShow = availableMeshes;
 
   const meshHtml = meshesToShow.map(m => {
     const current = FDP_DRAFT_MESHES[m] || 'none';
