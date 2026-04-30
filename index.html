@@ -1435,9 +1435,12 @@ function confirmEditName() {
 // BOOTSTRAP — load data immediately, no PIN required to view
 // ═══════════════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', () => {
-  // Restore a previously saved write PIN silently
-  const savedWrite = localStorage.getItem(LS_WRITE_PIN);
-  if (savedWrite) WRITE_PIN = savedWrite;
+  // Restore a previously saved write PIN silently —
+  // BUT if this is a QR scan (?cage= in URL), always start in read-only mode.
+  // The Login button is still available in the header to unlock write access.
+  const savedWrite  = localStorage.getItem(LS_WRITE_PIN);
+  const isQRLaunch  = new URLSearchParams(window.location.search).has('cage');
+  if (savedWrite && !isQRLaunch) WRITE_PIN = savedWrite;
 
   // Restore tagger name
   const savedName = localStorage.getItem('cc_tagger_name');
